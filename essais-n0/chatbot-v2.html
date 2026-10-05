@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chatbot Jeux de société</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, sans-serif;
+    background: #f3efe6;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+  .chat {
+    width: 100%;
+    max-width: 600px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    overflow: hidden;
+  }
+  header {
+    background: #8b4513;
+    color: #fff;
+    padding: 14px 18px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #effacer {
+    background: transparent;
+    border: 1px solid #fff;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+  .bot { background: #eee3d0; align-self: flex-start; }
+  .user { background: #8b4513; color: #fff; align-self: flex-end; }
+  form {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid #ddd;
+  }
+  input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  button {
+    padding: 10px 16px;
+    border: none;
+    background: #8b4513;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+</style>
+</head>
+<body>
+<div class="chat">
+  <header>
+    <span>🎲 Chatbot Jeux de société</span>
+    <button type="button" id="effacer">Effacer</button>
+  </header>
+  <div id="messages"></div>
+  <form id="form">
+    <input id="input" type="text" placeholder="Pose ta question sur un jeu…" autocomplete="off">
+    <button type="submit">Envoyer</button>
+  </form>
+</div>
+
+<script>
+  const messages = document.getElementById('messages');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const effacer = document.getElementById('effacer');
+
+  const jeux = {
+    monopoly: "Monopoly : 2 à 8 joueurs. On lance les dés, on avance, on achète les propriétés et on fait payer des loyers aux adversaires. Le dernier joueur non ruiné gagne.",
+    scrabble: "Scrabble : 2 à 4 joueurs. On forme des mots sur la grille avec ses 7 lettres. Chaque lettre rapporte des points, avec des cases bonus (mot compte double ou triple). Le plus de points gagne.",
+    uno: "Uno : 2 à 10 joueurs. Il faut poser une carte de même couleur ou même chiffre que celle du dessus. Le premier à se débarrasser de toutes ses cartes gagne. N'oublie pas de dire « Uno » avec une carte restante !",
+    catan: "Catan : 3 à 4 joueurs. On construit routes, colonies et villes pour produire des ressources et les échanger. Le premier à atteindre 10 points de victoire gagne.",
+    echecs: "Échecs : 2 joueurs. Chacun déplace ses pièces à tour de rôle. Le but est de mettre le roi adverse en échec et mat.",
+    dames: "Dames : 2 joueurs. On déplace ses pions en diagonale et on capture en sautant par-dessus un pion adverse. On gagne en capturant ou bloquant tous les pions adverses.",
+    "cluedo": "Cluedo : 3 à 6 joueurs. On mène l'enquête pour trouver qui a commis le meurtre, avec quelle arme et dans quelle pièce. Le premier qui accuse juste gagne.",
+    "dobble": "Dobble : 2 à 8 joueurs. Chaque paire de cartes a exactement un symbole en commun. Le premier à le trouver et à le nommer gagne la carte.",
+    "tarot": "Tarot : 3 à 5 joueurs. Un joueur prend une enchère et joue seul ou avec un partenaire pour atteindre un nombre de points selon le nombre de bouts qu'il possède."
+  };
+
+  function normaliser(t) {
+    return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function repondre(texte) {
+    const t = normaliser(texte);
+
+    for (const nom in jeux) {
+      if (t.includes(normaliser(nom))) return jeux[nom];
+    }
+    if (t.includes('egalite') || t.includes('egal')) {
+      return "En cas d'égalité, regarde d'abord les règles du jeu : souvent on départage avec un critère secondaire (cartes restantes, ressources, tour de jeu). À défaut, on rejoue une manche ou on partage la victoire.";
+    }
+    if (t.includes('triche') || t.includes('dispute') || t.includes('desaccord') || t.includes('litige')) {
+      return "En cas de désaccord, relisez ensemble la règle écrite. Si elle est ambiguë, décidez à la majorité, appliquez la décision à tout le monde et notez-la pour la prochaine partie.";
+    }
+    if (t.includes('regle') || t.includes('jouer') || t.includes('comment')) {
+      return "Dis-moi de quel jeu tu parles (Monopoly, Scrabble, Uno, Catan, Échecs, Dames, Cluedo, Dobble, Tarot) et je t'explique les règles de base.";
+    }
+    if (t.includes('bonjour') || t.includes('salut') || t.includes('coucou')) {
+      return "Salut ! Je peux t'expliquer les règles d'un jeu de société ou t'aider à trancher une dispute. Que veux-tu savoir ?";
+    }
+    return "Je n'ai pas bien compris. Essaie par exemple : « règles du Uno » ou « que faire en cas d'égalité ? ».";
+  }
+
+  function ajouter(texte, auteur) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + auteur;
+    div.textContent = texte;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texte = input.value.trim();
+    if (!texte) return;
+    ajouter(texte, 'user');
+    input.value = '';
+    setTimeout(() => ajouter(repondre(texte), 'bot'), 400);
+  });
+
+  function accueil() {
+    ajouter("Bonjour ! Je suis ton assistant jeux de société. Demande-moi les règles d'un jeu ou comment régler un désaccord.", 'bot');
+  }
+
+  effacer.addEventListener('click', () => {
+    messages.innerHTML = '';
+    accueil();
+    input.focus();
+  });
+
+  accueil();
+</script>
+</body>
+</html>

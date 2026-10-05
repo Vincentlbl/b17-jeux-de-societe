@@ -26,8 +26,8 @@ Recopiez les valeurs telles que le formateur vous les a remises. Ne les changez 
 
 Notez le dossier de lancement, la commande et sa sortie exacte, surtout quand un outil a bloqué.
 
-- Dossier : atelier
-- Commande et résultat : `npm start` — le serveur démarre, la page de départ s'affiche sur http://127.0.0.1:3000 ; relancé par Sami après Ctrl+C.
+- Dossier : 
+- Commande et résultat :
 
 Pour chaque checkpoint : cochez la case quand toute la preuve de la fiche est réunie, collez la preuve (texte, commande ou phrase), puis notez ce que vous avez prédit, essayé, observé, et une difficulté qui reste.
 
@@ -35,189 +35,39 @@ Pour chaque checkpoint : cochez la case quand toute la preuve de la fiche est r�
 
 ### J1-01 · 🧭 Équipage — [fiche](checkpoints/J1-01-equipage.md)
 
-- [x] Validé
-- Preuve (page de départ affichée sur votre poste, cahier personnel recopié ci-dessus) : page de départ affichée sur http://127.0.0.1:3000, cahier personnel recopié plus haut.
-- Le `p#status` est-il vide dans le HTML ? Qui écrit sa phrase ? Oui, il est vide dans index.html. C'est app.js qui écrit sa phrase (« Votre point de départ est prêt. ») avec `document.querySelector('#status').textContent`.
-- Décision prise ensemble : thème jeux de société.
-- Difficulté qui reste : aucune
+- [ ] Validé
+- Preuve (page de départ affichée sur votre poste, cahier personnel recopié ci-dessus) :
+- Le `p#status` est-il vide dans le HTML ? Qui écrit sa phrase ?
+- Décision prise ensemble :
+- Difficulté qui reste :
 
 ### J1-02 · 💬 Premier prompt — [fiche](checkpoints/J1-02-premier-prompt.md)
 
 - [x] Validé
-- Preuve : `essais-n0/chatbot-v1.html` s'ouvre dans le navigateur ; le prompt et la première réponse sont collés ci-dessous, en entier, sans donnée personnelle. Chat utilisé : Claude (et non Mistral). Code non corrigé à la main.
-- Mon prompt, tel quel :
+- Preuve : page de départ affichée sur http://127.0.0.1:3000, cahier personnel recopié plus haut.
+- Le `p#status` est-il vide dans le HTML ? Oui, il est vide dans index.html. C'est app.js qui écrit sa phrase (« Votre point de départ est prêt. ») avec document.querySelector('#status').textContent.
+- Décision prise ensemble : thème jeux de société.
+- Difficulté qui reste : aucune 
 
-```text
-fais-moi un chatbot sur les jeux de société, dans une seule page HTML que j'ouvre dans mon navigateur.
-```
-
-- La première réponse du chat (texte et code), telle quelle :
-
-Texte : « Voilà chatbot-v1.html : une page unique avec les règles de 9 jeux (Monopoly, Scrabble, Uno…), quelques réponses sur les égalités et les désaccords, et un message de repli. »
-
-```html
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chatbot Jeux de société</title>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: system-ui, sans-serif;
-    background: #f3efe6;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    padding: 20px;
-  }
-  .chat {
-    width: 100%;
-    max-width: 600px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.15);
-    display: flex;
-    flex-direction: column;
-    height: 90vh;
-    overflow: hidden;
-  }
-  header {
-    background: #8b4513;
-    color: #fff;
-    padding: 14px 18px;
-    font-size: 1.2rem;
-    font-weight: bold;
-  }
-  #messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .msg {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 14px;
-    line-height: 1.4;
-    white-space: pre-wrap;
-  }
-  .bot { background: #eee3d0; align-self: flex-start; }
-  .user { background: #8b4513; color: #fff; align-self: flex-end; }
-  form {
-    display: flex;
-    gap: 8px;
-    padding: 12px;
-    border-top: 1px solid #ddd;
-  }
-  input {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 1rem;
-  }
-  button {
-    padding: 10px 16px;
-    border: none;
-    background: #8b4513;
-    color: #fff;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-</style>
-</head>
-<body>
-<div class="chat">
-  <header>🎲 Chatbot Jeux de société</header>
-  <div id="messages"></div>
-  <form id="form">
-    <input id="input" type="text" placeholder="Pose ta question sur un jeu…" autocomplete="off">
-    <button type="submit">Envoyer</button>
-  </form>
-</div>
-
-<script>
-  const messages = document.getElementById('messages');
-  const form = document.getElementById('form');
-  const input = document.getElementById('input');
-
-  const jeux = {
-    monopoly: "Monopoly : 2 à 8 joueurs. On lance les dés, on avance, on achète les propriétés et on fait payer des loyers aux adversaires. Le dernier joueur non ruiné gagne.",
-    scrabble: "Scrabble : 2 à 4 joueurs. On forme des mots sur la grille avec ses 7 lettres. Chaque lettre rapporte des points, avec des cases bonus (mot compte double ou triple). Le plus de points gagne.",
-    uno: "Uno : 2 à 10 joueurs. Il faut poser une carte de même couleur ou même chiffre que celle du dessus. Le premier à se débarrasser de toutes ses cartes gagne. N'oublie pas de dire « Uno » avec une carte restante !",
-    catan: "Catan : 3 à 4 joueurs. On construit routes, colonies et villes pour produire des ressources et les échanger. Le premier à atteindre 10 points de victoire gagne.",
-    echecs: "Échecs : 2 joueurs. Chacun déplace ses pièces à tour de rôle. Le but est de mettre le roi adverse en échec et mat.",
-    dames: "Dames : 2 joueurs. On déplace ses pions en diagonale et on capture en sautant par-dessus un pion adverse. On gagne en capturant ou bloquant tous les pions adverses.",
-    "cluedo": "Cluedo : 3 à 6 joueurs. On mène l'enquête pour trouver qui a commis le meurtre, avec quelle arme et dans quelle pièce. Le premier qui accuse juste gagne.",
-    "dobble": "Dobble : 2 à 8 joueurs. Chaque paire de cartes a exactement un symbole en commun. Le premier à le trouver et à le nommer gagne la carte.",
-    "tarot": "Tarot : 3 à 5 joueurs. Un joueur prend une enchère et joue seul ou avec un partenaire pour atteindre un nombre de points selon le nombre de bouts qu'il possède."
-  };
-
-  function normaliser(t) {
-    return t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  }
-
-  function repondre(texte) {
-    const t = normaliser(texte);
-
-    for (const nom in jeux) {
-      if (t.includes(normaliser(nom))) return jeux[nom];
-    }
-    if (t.includes('egalite') || t.includes('egal')) {
-      return "En cas d'égalité, regarde d'abord les règles du jeu : souvent on départage avec un critère secondaire (cartes restantes, ressources, tour de jeu). À défaut, on rejoue une manche ou on partage la victoire.";
-    }
-    if (t.includes('triche') || t.includes('dispute') || t.includes('desaccord') || t.includes('litige')) {
-      return "En cas de désaccord, relisez ensemble la règle écrite. Si elle est ambiguë, décidez à la majorité, appliquez la décision à tout le monde et notez-la pour la prochaine partie.";
-    }
-    if (t.includes('regle') || t.includes('jouer') || t.includes('comment')) {
-      return "Dis-moi de quel jeu tu parles (Monopoly, Scrabble, Uno, Catan, Échecs, Dames, Cluedo, Dobble, Tarot) et je t'explique les règles de base.";
-    }
-    if (t.includes('bonjour') || t.includes('salut') || t.includes('coucou')) {
-      return "Salut ! Je peux t'expliquer les règles d'un jeu de société ou t'aider à trancher une dispute. Que veux-tu savoir ?";
-    }
-    return "Je n'ai pas bien compris. Essaie par exemple : « règles du Uno » ou « que faire en cas d'égalité ? ».";
-  }
-
-  function ajouter(texte, auteur) {
-    const div = document.createElement('div');
-    div.className = 'msg ' + auteur;
-    div.textContent = texte;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-  }
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const texte = input.value.trim();
-    if (!texte) return;
-    ajouter(texte, 'user');
-    input.value = '';
-    setTimeout(() => ajouter(repondre(texte), 'bot'), 400);
-  });
-
-  ajouter("Bonjour ! Je suis ton assistant jeux de société. Demande-moi les règles d'un jeu ou comment régler un désaccord.", 'bot');
-</script>
-</body>
-</html>
-```
-
-- Trois lignes d'observation (ce que j'ai vu en utilisant la page) :
-  1. Message sur le thème (« règles du Uno ») : le bot répond avec les règles du Uno (2 à 10 joueurs, même couleur ou même chiffre, dire « Uno »).
-  2. Message hors thème (« quel temps fait-il ? ») : le bot répond « Je n'ai pas bien compris. Essaie par exemple : « règles du Uno » ou « que faire en cas d'égalité ? ». »
-  3. Message vide : rien ne se passe, aucune ligne n'est ajoutée.
-- Difficulté qui reste : aucune
 
 ### J1-03 · 💥 Ça marche… jusqu'à quand — [fiche](checkpoints/J1-03-jusqua-quand.md)
 
 - [ ] Validé
 - Liste de contrôle de la version 1 (cinq à huit comportements essayés) :
+  1. Entrée envoie le message
+  2. Le message apparaît dans la liste (bulle à droite)
+  3. Le bot répond après un petit délai
+  4. « règles du Uno » donne les règles du Uno
+  5. « regle » sans accent est compris
+  6. Un message hors thème donne le message de repli
+  7. Un message vide n'ajoute rien
+  8. Le titre du bandeau est « 🎲 Chatbot Jeux de société »
 - Journal des régressions, une entrée par modification : ce que j'ai demandé · ce qui marche maintenant · ce qui marchait et ne marche plus · ce que je n'avais pas vu, et comment je l'ai trouvé.
   - Modification 1 :
+    - Demandé : Ajoute un bouton « Effacer » qui vide la conversation. Redonne-moi le fichier complet.
+    - Ce qui marche maintenant : <…>
+    - Ce qui marchait avant et ne marche plus : <lignes barrées de la liste, ou « rien » + comment j'ai cherché>
+    - Ce que je n'avais pas vu, et comment je l'ai trouvé : <…>
   - Modification 2 :
   - Modification 3 :
 - Chasse à l'angle mort (ce qui a été trouvé, et par qui) :
