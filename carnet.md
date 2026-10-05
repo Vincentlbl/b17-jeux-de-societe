@@ -51,8 +51,7 @@ Pour chaque checkpoint : cochez la case quand toute la preuve de la fiche est r�
 
 
 ### J1-03 · 💥 Ça marche… jusqu'à quand — [fiche](checkpoints/J1-03-jusqua-quand.md)
-
-- [ ] Validé
+- [x] Validé
 - Liste de contrôle de la version 1 (cinq à huit comportements essayés) :
   1. Entrée envoie le message
   2. Le message apparaît dans la liste (bulle à droite)
@@ -64,15 +63,28 @@ Pour chaque checkpoint : cochez la case quand toute la preuve de la fiche est r�
   8. Le titre du bandeau est « 🎲 Chatbot Jeux de société »
 - Journal des régressions, une entrée par modification : ce que j'ai demandé · ce qui marche maintenant · ce qui marchait et ne marche plus · ce que je n'avais pas vu, et comment je l'ai trouvé.
   - Modification 1 :
-    - Demandé : Ajoute un bouton « Effacer » qui vide la conversation. Redonne-moi le fichier complet.
-    - Ce qui marche maintenant : <…>
-    - Ce qui marchait avant et ne marche plus : <lignes barrées de la liste, ou « rien » + comment j'ai cherché>
-    - Ce que je n'avais pas vu, et comment je l'ai trouvé : <…>
+    - Demandé : Ajoute un bouton « Effacer » qui vide la conversation. Redonne-moi le fichier complet. (chatbot-v2.html)
+    - Ce qui marche maintenant : le bouton « Effacer » du bandeau vide la liste et réaffiche le message d'accueil.
+    - Ce qui marchait avant et ne marche plus : rien. J'ai retesté les 8 lignes de la liste, et comparé v1 et v2 avec `diff` (seuls le bandeau et le script ont changé).
+    - Ce que je n'avais pas vu, et comment je l'ai trouvé : le chat a aussi changé le style du bandeau (flex) pour placer le bouton, et il a décidé tout seul de réafficher l'accueil après l'effacement ; vu avec `diff`.
   - Modification 2 :
+    - Demandé : Garde les messages quand je recharge la page (F5). Redonne-moi le fichier complet. (chatbot-v3.html)
+    - Ce qui marche maintenant : après F5, la conversation revient ; « Effacer » vide aussi la mémoire.
+    - Ce qui marchait avant et ne marche plus : rien sur les 8 lignes.
+    - Ce que je n'avais pas vu, et comment je l'ai trouvé : la conversation est enregistrée sous une clé de `localStorage` partagée entre les pages ouvertes en fichier, donc v4 s'ouvre avec la conversation de v3 (vu dans F12, Application, Local Storage).
   - Modification 3 :
-- Chasse à l'angle mort (ce qui a été trouvé, et par qui) :
-- Deux phrases de conclusion :
-- Difficulté qui reste :
+    - Demandé : Refuse d'envoyer un message vide. Redonne-moi le fichier complet. (chatbot-v4.html)
+    - Ce qui marche maintenant : un message vide ou fait d'espaces affiche en rouge « Écris un message avant d'envoyer. » et rien n'est ajouté.
+    - Ce qui marchait avant et ne marche plus : rien. Mais la v1 ignorait déjà le message vide : la ligne 7 de ma liste était déjà vraie, la modification a seulement ajouté un message visible.
+    - Ce que je n'avais pas vu, et comment je l'ai trouvé : le message rouge reste affiché tant que je n'envoie pas un message valide, même si je tape du texte ou si je clique sur « Effacer » ; vu en testant dans la page.
+- Chasse à l'angle mort (ce qui a été trouvé, et par qui) : (par Vincent et Sami, sur chatbot-v4.html)
+  - `<b>gras</b>` s'affiche tel quel, pas en gras (le texte passe par `textContent`).
+  - Un message de 500 caractères est accepté sans limite ; un mot très long sans espace dépasse de la bulle.
+  - Deux envois très rapides : les deux messages s'ajoutent, les réponses arrivent après 400 ms.
+  - Valeur abîmée `{pas du json` dans `chatbot-jeux-messages` : la page s'ouvre quand même avec l'accueil (le `try/catch` la rattrape).
+  - Valeur `{}` dans la même clé : la page ne réaffiche plus la conversation et l'envoi d'un message ne marche plus (erreur dans la console, F12). C'est le défaut le plus grave trouvé.
+- Deux phrases de conclusion : La modification 2 (mémoire) a le plus cassé de choses : elle a rendu la page fragile face à une valeur inattendue dans `localStorage`. Sans ma liste de contrôle et la chasse à l'angle mort, je ne l'aurais pas vu, parce que la nouveauté marchait et que le plantage n'apparaît qu'avec une valeur que personne ne tape à la main.
+- Difficulté qui reste : <ce qui t'a bloqué, ou « aucune »>
 
 ### J1-04 · 🎲 Même prompt, autre réponse — [fiche](checkpoints/J1-04-meme-prompt.md)
 
