@@ -1,1 +1,4 @@
-document.querySelector('#status').textContent = 'Votre point de départ est prêt.';
+document.querySelector('#chat-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  document.querySelector('#status').textContent = 'Interface prête.';
+});

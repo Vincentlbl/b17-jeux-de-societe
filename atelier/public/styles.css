@@ -1,2 +1,4 @@
 body { font-family: system-ui, sans-serif; margin: 2rem; color: #15213a; background: white; }
 main { max-width: 48rem; margin-inline: auto; }
+form { display: grid; gap: 0.5rem; margin-top: 1rem; }
+textarea { min-height: 4rem; }
