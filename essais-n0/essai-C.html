@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meeple - Chatbot jeux de société</title>
+<style>
+  :root{
+    --bg:#f5efe3; --panel:#fffdf8; --ink:#2a2824; --muted:#7a7468; --line:#e3dac8;
+    --accent:#1f6f5c; --accent-ink:#ffffff; --bot:#efe7d6; --user:#1f6f5c; --user-ink:#fff;
+    --chip:#e8f1ee; --warn:#b4532a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121a17; --panel:#19231f; --ink:#ece7da; --muted:#9aa59e; --line:#2a3832;
+      --accent:#4fb596; --accent-ink:#0c1512; --bot:#223029; --user:#2f8a73; --user-ink:#fff;
+      --chip:#1f302a; --warn:#e89066;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; justify-content:center;
+  }
+  .app{
+    width:100%; max-width:780px; height:100dvh; display:flex; flex-direction:column;
+    background:var(--panel); border-left:1px solid var(--line); border-right:1px solid var(--line);
+  }
+  header{
+    display:flex; align-items:center; gap:12px; padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  header svg{flex:none}
+  header h1{font-size:1.05rem; margin:0; line-height:1.2}
+  header p{margin:0; font-size:.82rem; color:var(--muted)}
+  #log{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; scroll-behavior:smooth}
+  .row{display:flex}
+  .row.user{justify-content:flex-end}
+  .bubble{
+    max-width:88%; padding:10px 14px; border-radius:16px; background:var(--bot);
+    overflow-wrap:anywhere;
+  }
+  .row.user .bubble{background:var(--user); color:var(--user-ink); border-bottom-right-radius:4px}
+  .row.bot .bubble{border-bottom-left-radius:4px}
+  .bubble p{margin:0 0 8px}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble ol{margin:6px 0 8px; padding-left:20px}
+  .bubble li{margin:3px 0}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:10px 12px; margin:8px 0;
+  }
+  .card-h{display:flex; justify-content:space-between; gap:8px; align-items:baseline}
+  .card-h strong{font-size:1.02rem}
+  .lvl{font-size:.75rem; color:var(--muted); white-space:nowrap}
+  .meta{font-size:.85rem; color:var(--accent); font-weight:600; margin:2px 0 4px}
+  .card p{font-size:.92rem; margin:0 0 6px}
+  .tags{display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px}
+  .tag{font-size:.72rem; background:var(--chip); border-radius:999px; padding:1px 8px; color:var(--ink)}
+  .acts, .quick{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+  button{font:inherit; cursor:pointer}
+  .acts button, .quick button{
+    font-size:.84rem; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--accent); background:transparent; color:var(--accent);
+  }
+  .acts button:hover, .quick button:hover{background:var(--accent); color:var(--accent-ink)}
+  .note{color:var(--warn); font-size:.9rem}
+  .typing{display:inline-flex; gap:4px; padding:4px 0}
+  .typing i{width:7px; height:7px; border-radius:50%; background:var(--muted); animation:b 1s infinite}
+  .typing i:nth-child(2){animation-delay:.15s}
+  .typing i:nth-child(3){animation-delay:.3s}
+  @keyframes b{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+  #filters{display:flex; flex-wrap:wrap; gap:6px; padding:8px 16px 0}
+  #filters[hidden]{display:none}
+  .chip{
+    font-size:.8rem; padding:3px 10px; border-radius:999px; border:0;
+    background:var(--chip); color:var(--ink);
+  }
+  .chip:hover{background:var(--accent); color:var(--accent-ink)}
+  form{display:flex; gap:8px; padding:12px 16px 16px}
+  input[type=text]{
+    flex:1; min-width:0; padding:11px 14px; border-radius:999px; font:inherit;
+    border:1px solid var(--line); background:var(--bg); color:var(--ink);
+  }
+  input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px}
+  form button{
+    padding:0 20px; border-radius:999px; border:0; background:var(--accent); color:var(--accent-ink); font-weight:600;
+  }
+  @media (max-width:560px){ .bubble{max-width:94%} #log{padding:12px} }
+  @media (prefers-reduced-motion:reduce){ #log{scroll-behavior:auto} .typing i{animation:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="4" y="4" width="32" height="32" rx="8" fill="#1f6f5c"/>
+      <circle cx="13" cy="13" r="3" fill="#fff"/><circle cx="27" cy="13" r="3" fill="#fff"/>
+      <circle cx="20" cy="20" r="3" fill="#fff"/>
+      <circle cx="13" cy="27" r="3" fill="#fff"/><circle cx="27" cy="27" r="3" fill="#fff"/>
+    </svg>
+    <div>
+      <h1>Meeple</h1>
+      <p>Ton assistant jeux de société</p>
+    </div>
+  </header>
+
+  <main id="log" aria-live="polite" aria-label="Conversation"></main>
+  <div id="filters" hidden></div>
+
+  <form id="form" autocomplete="off">
+    <input type="text" id="input" placeholder="Ex. : un jeu coopératif pour 4 joueurs, 30 min" aria-label="Ton message" maxlength="300">
+    <button type="submit">Envoyer</button>
+  </form>
+</div>
+
+<script>
+/* ============ Base de connaissances ============ */
+const LVL = {1:"Très simple", 2:"Simple", 3:"Intermédiaire", 4:"Costaud", 5:"Expert"};
+const TAGLABEL = {
+  coop:"coopératif", famille:"famille", ambiance:"ambiance", strategie:"stratégie", bluff:"bluff",
+  deduction:"déduction", cartes:"cartes", puzzle:"puzzle / tuiles", aventure:"aventure", classique:"classique",
+  equipes:"équipes", creatif:"créatif", deckbuilding:"deck-building", negociation:"négociation",
+  draft:"draft", abstrait:"abstrait", solo:"jouable en solo"
+};
+
+const GAMES = [
+ {n:"Catan", a:["catan","les colons de catane","colons de catane"], p:[3,4], t:[60,120], l:2,
+  tags:["strategie","famille","classique","negociation"],
+  d:"Colonisez une île, récoltez des ressources et négociez avec les autres joueurs. Le grand classique moderne.",
+  r:["Chaque tour, on lance deux dés : les terrains portant ce numéro produisent des ressources pour ceux qui y ont une colonie.",
+     "On échange des ressources avec les autres joueurs ou avec la banque, puis on construit routes, colonies, villes ou on achète des cartes développement.",
+     "Le premier à atteindre 10 points de victoire remporte la partie."],
+  tip:"Négocie dès les premiers tours et pense aux ports : ils valent souvent plus que quelques routes."},
+ {n:"Carcassonne", a:["carcassonne"], p:[2,5], t:[30,45], l:2, tags:["famille","puzzle","strategie"],
+  d:"Posez des tuiles pour construire routes, villes et abbayes, et placez vos partisans au bon endroit.",
+  r:["À son tour, on pioche une tuile et on la pose en respectant les bords déjà posés.",
+     "On peut ensuite placer un partisan sur la tuile (route, ville, abbaye ou pré).",
+     "Une structure terminée rapporte des points et rend le partisan. Les points restants sont comptés en fin de partie."],
+  tip:"Garde toujours un partisan en réserve : les prés rapportent gros mais bloquent vos partisans jusqu'à la fin."},
+ {n:"Les Aventuriers du Rail", a:["aventuriers du rail","ticket to ride","les aventuriers du rail"], p:[2,5], t:[45,75], l:2, tags:["famille","cartes","strategie"],
+  d:"Reliez des villes en posant vos wagons sur la carte et réalisez vos billets destination.",
+  r:["À son tour, on fait une seule action : piocher des cartes wagon, prendre possession d'une route ou piocher des billets destination.",
+     "Pour prendre une route, on défausse autant de cartes de la couleur requise que sa longueur, puis on pose ses wagons.",
+     "Quand un joueur n'a plus que 2 wagons ou moins, chacun joue un dernier tour. Les billets réussis rapportent des points, les ratés en font perdre."],
+  tip:"Prends les routes stratégiques tôt, avant que les adversaires ne vous bloquent."},
+ {n:"7 Wonders", a:["7 wonders","seven wonders","7wonders"], p:[3,7], t:[30,40], l:3, tags:["strategie","cartes","draft"],
+  d:"Développez une civilisation en 3 âges grâce au draft de cartes, du militaire aux sciences en passant par le commerce.",
+  r:["Chaque âge, on reçoit 7 cartes, on en choisit une et on passe le reste à son voisin (draft).",
+     "Les cartes jouées donnent des ressources, des points, de la science ou de la force militaire. On peut aussi construire les étapes de sa merveille.",
+     "À la fin du 3e âge, on additionne tous les points : militaire, trésor, merveille, bâtiments civils, science et guildes."],
+  tip:"Surveille tes deux voisins : tu achètes leurs ressources et tu te bats contre eux."},
+ {n:"7 Wonders Duel", a:["7 wonders duel","seven wonders duel","duel 7 wonders"], p:[2,2], t:[30,30], l:3, tags:["strategie","cartes"],
+  d:"La version duo de 7 Wonders : trois façons de gagner et des cartes qui se révèlent au fil de la partie.",
+  r:["Les cartes sont disposées en pyramide, on ne peut prendre que celles qui sont dégagées.",
+     "On construit des bâtiments (ressources, science, militaire, civils) ou des merveilles.",
+     "Victoire immédiate par suprématie militaire ou scientifique, sinon le meilleur score à la fin du 3e âge l'emporte."],
+  tip:"Garde un œil sur la piste militaire : une avance de 9 cases gagne la partie d'un coup."},
+ {n:"Pandemic", a:["pandemic","pandemie"], p:[2,4], t:[45,60], l:3, tags:["coop","strategie","cartes"],
+  d:"Équipe de spécialistes contre quatre maladies qui se propagent sur la planète. On gagne ensemble ou on perd ensemble.",
+  r:["À son tour, on dispose de 4 actions : se déplacer, soigner, construire une station, échanger des cartes ou découvrir un remède.",
+     "Puis on pioche 2 cartes joueur et on infecte de nouvelles villes.",
+     "On gagne en découvrant les 4 remèdes (5 cartes de la même couleur dans une station de recherche). On perd si il y a 8 éclosions, plus de cubes ou plus de cartes."],
+  tip:"Parlez-vous beaucoup, mais gare au joueur alpha qui dicte tout aux autres."},
+ {n:"Dixit", a:["dixit"], p:[3,6], t:[30,30], l:1, tags:["ambiance","famille","creatif"],
+  d:"Des cartes illustrées et poétiques : donnez un indice ni trop évident ni trop obscur.",
+  r:["Le conteur choisit une carte de sa main et donne un indice (mot, phrase, bruit).",
+     "Les autres joueurs choisissent dans leur main la carte qui colle le mieux. Toutes les cartes sont mélangées et révélées, puis chacun vote pour la carte du conteur.",
+     "Si tout le monde ou personne ne trouve, le conteur ne marque rien. Sinon il marque des points, ainsi que ceux qui ont trouvé."],
+  tip:"L'indice parfait est celui que la moitié des joueurs seulement comprendra."},
+ {n:"Codenames", a:["codenames","code names"], p:[4,8], t:[15,20], l:1, tags:["ambiance","deduction","equipes"],
+  d:"Deux équipes, deux maîtres-espions : un mot d'indice pour faire deviner plusieurs mots sans toucher l'assassin.",
+  r:["25 mots sont disposés en grille. Chaque maître-espion connaît les mots de son équipe.",
+     "Il donne un seul mot d'indice suivi d'un nombre (combien de mots sont concernés).",
+     "L'équipe désigne des mots. Le premier camp à avoir trouvé tous ses agents gagne. Désigner l'assassin fait perdre immédiatement."],
+  tip:"Mieux vaut un indice sûr pour 2 mots qu'un indice acrobatique pour 4."},
+ {n:"Splendor", a:["splendor"], p:[2,4], t:[30,30], l:2, tags:["cartes","strategie","famille"],
+  d:"Marchand de gemmes de la Renaissance : achetez des cartes de développement pour bâtir un moteur d'économie.",
+  r:["À son tour, on fait une seule action : prendre des jetons gemmes, réserver une carte ou acheter une carte.",
+     "Les cartes achetées fournissent des réductions permanentes sur les prochains achats et des points de prestige.",
+     "Des nobles visitent ceux qui ont assez de bonus. Le premier à 15 points de prestige déclenche la fin de partie."],
+  tip:"Viser les cartes qui donnent des bonus utiles à plusieurs nobles est souvent payant."},
+ {n:"Azul", a:["azul"], p:[2,4], t:[30,45], l:2, tags:["puzzle","famille","abstrait"],
+  d:"Choisissez des tuiles colorées pour décorer le mur du palais, un casse-tête élégant.",
+  r:["On prend toutes les tuiles d'une même couleur dans une fabrique. Les restes vont au centre.",
+     "On les place sur une ligne de motif. Une ligne complète envoie une tuile sur le mur et marque des points.",
+     "Les tuiles en trop créent des pénalités. La partie s'arrête quand une ligne horizontale du mur est complète."],
+  tip:"Surveille ce que ton voisin attend : lui laisser une couleur dont il a besoin peut te coûter cher."},
+ {n:"Wingspan", a:["wingspan","envergure"], p:[1,5], t:[40,70], l:3, tags:["strategie","cartes","solo"],
+  d:"Attirez des oiseaux dans vos habitats et construisez un moteur de combos. Superbe matériel, jouable en solo.",
+  r:["Sur 4 manches, on joue des actions : jouer un oiseau, prendre de la nourriture, pondre des œufs ou piocher des cartes.",
+     "Chaque habitat (forêt, prairie, zones humides) active les pouvoirs des oiseaux de gauche à droite.",
+     "On marque avec les oiseaux, les œufs, les cartes sous les oiseaux, les objectifs de manche et les bonus."],
+  tip:"Priorise les oiseaux dont les pouvoirs s'enchaînent dès la première manche."},
+ {n:"Terraforming Mars", a:["terraforming mars","terraformation de mars"], p:[1,5], t:[120,150], l:4, tags:["strategie","cartes","solo"],
+  d:"Pilotez une corporation et rendez Mars habitable en faisant monter température, oxygène et océans.",
+  r:["Chaque génération : on choisit des cartes à acheter, puis on joue des actions à tour de rôle (cartes, projets standard, actions bleues).",
+     "Augmenter la température, l'oxygène et les océans rapporte du niveau de terraformation (TR).",
+     "Quand les 3 paramètres globaux sont atteints, la partie se termine à la fin de la génération. Le meilleur score (TR + jalons, récompenses, cartes) gagne."],
+  tip:"Ne cherche pas à jouer toutes tes cartes : choisis un moteur et tiens-toi à ta stratégie."},
+ {n:"Dominion", a:["dominion"], p:[2,4], t:[30,30], l:3, tags:["cartes","strategie","deckbuilding"],
+  d:"Le père du deck-building : on démarre avec un petit paquet qu'on améliore à chaque tour.",
+  r:["Chacun commence avec 10 cartes (cuivres et domaines). On pioche 5 cartes.",
+     "Chaque tour : une phase Action, une phase Achat (acquérir une carte de la réserve), puis on défausse tout et on repioche 5 cartes.",
+     "La partie s'arrête quand la pile des provinces ou trois piles de la réserve sont vides. Le plus de points de victoire gagne."],
+  tip:"Un paquet trop gros dilue tes bonnes cartes. N'achète pas par réflexe."},
+ {n:"Les Loups-Garous de Thiercelieux", a:["loup garou","loups garous","loup garou de thiercelieux","loups garous de thiercelieux"], p:[8,18], t:[30,45], l:1, tags:["ambiance","bluff","deduction","equipes"],
+  d:"Un village, des rôles secrets et des loups qui se cachent parmi vous. Idéal pour les grosses soirées.",
+  r:["Chaque joueur reçoit un rôle secret (villageois, loup-garou, voyante, sorcière...). Un meneur anime la partie.",
+     "La nuit, les loups dévorent une victime. Le jour, le village vote pour éliminer un suspect.",
+     "Les villageois gagnent si tous les loups sont morts, les loups gagnent s'ils sont aussi nombreux que les villageois."],
+  tip:"Les meilleurs menteurs sont souvent ceux qui parlent le moins fort."},
+ {n:"Time's Up", a:["time s up","times up","time up"], p:[4,12], t:[30,45], l:1, tags:["ambiance","equipes","creatif"],
+  d:"Faire deviner des personnages célèbres en trois manches : description libre, un seul mot, puis mime.",
+  r:["Chaque joueur écrit ou reçoit des cartes de personnages, les mêmes cartes servent pour les 3 manches.",
+     "Manche 1 : on parle librement. Manche 2 : un seul mot. Manche 3 : mime uniquement.",
+     "Chaque équipe a 30 secondes par tour. Les points de toutes les manches sont cumulés."],
+  tip:"Mémorise les cartes pendant la manche 1 : elles reviendront, de plus en plus difficiles à faire deviner."},
+ {n:"Uno", a:["uno"], p:[2,10], t:[15,30], l:1, tags:["cartes","famille","ambiance"],
+  d:"Le classique de cartes accessible à tous : se débarrasser de toutes ses cartes avant les autres.",
+  r:["On pose une carte de même couleur ou de même valeur que celle du dessus de la défausse.",
+     "Les cartes spéciales (passe, inversion, +2, joker, +4) bouleversent le tour.",
+     "Quand il ne reste qu'une carte en main, il faut crier « Uno ». Le premier sans carte gagne la manche."],
+  tip:"Garde un joker pour la fin, c'est le meilleur moyen de sortir proprement."},
+ {n:"Kingdomino", a:["kingdomino"], p:[2,4], t:[15,20], l:1, tags:["famille","puzzle"],
+  d:"Construisez votre royaume avec des dominos de terrains. Très rapide et parfait pour initier.",
+  r:["On choisit un domino parmi ceux proposés. L'ordre du choix détermine l'ordre de jeu du tour suivant.",
+     "On connecte le domino à son royaume (grille maximale 5x5) en faisant correspondre au moins un terrain.",
+     "À la fin, chaque zone vaut sa taille multipliée par le nombre de couronnes qu'elle contient."],
+  tip:"Prendre un domino faible te donne la priorité au tour suivant. Sois stratégique."},
+ {n:"Skull", a:["skull","skull and roses"], p:[3,6], t:[15,30], l:1, tags:["bluff","ambiance","cartes"],
+  d:"Un jeu de bluff minimaliste : trois roses, un crâne, et beaucoup de culot.",
+  r:["Chacun a 3 roses et 1 crâne. Chacun pose une carte face cachée, puis on pose à tour de rôle ou on lance un défi.",
+     "Celui qui défie annonce combien de cartes il peut retourner sans tomber sur un crâne (il retourne d'abord les siennes).",
+     "Réussir 2 défis fait gagner. Révéler un crâne fait perdre une carte au hasard."],
+  tip:"Les premiers tours servent à jauger les adversaires, ne te précipite pas."},
+ {n:"Just One", a:["just one"], p:[3,7], t:[20,20], l:1, tags:["coop","ambiance","famille"],
+  d:"Coopératif et rigolo : tout le monde écrit un indice, mais les indices identiques s'annulent.",
+  r:["Un joueur devine un mot qu'il ne voit pas.",
+     "Les autres écrivent chacun secrètement un indice d'un seul mot. Les indices identiques sont supprimés.",
+     "Le devineur n'a droit qu'à une réponse. On cumule le nombre de cartes réussies sur 13."],
+  tip:"Évite l'indice le plus évident, c'est celui que tout le monde écrira."},
+ {n:"The Mind", a:["the mind","mind"], p:[2,4], t:[15,20], l:1, tags:["coop","cartes"],
+  d:"Posez vos cartes dans l'ordre croissant sans parler ni vous concerter. Une expérience étrange et mémorable.",
+  r:["Chaque joueur reçoit des cartes numérotées de 1 à 100 (le nombre dépend du niveau).",
+     "Sans communiquer, l'équipe doit poser les cartes au centre dans l'ordre croissant.",
+     "Si une carte plus petite est encore en main, l'équipe perd une vie. On gagne en terminant tous les niveaux."],
+  tip:"Respirer ensemble et compter dans sa tête aide à synchroniser l'équipe."},
+ {n:"Love Letter", a:["love letter"], p:[2,4], t:[15,20], l:1, tags:["cartes","bluff","deduction"],
+  d:"Seize cartes, un seul objectif : faire parvenir votre lettre à la princesse. Très rapide, très tendu.",
+  r:["On a une seule carte en main. À son tour, on en pioche une et on en joue une, en appliquant son effet.",
+     "Les effets permettent de deviner, comparer ou éliminer. Être éliminé ou avoir la plus faible carte à la fin de la manche fait perdre.",
+     "Le vainqueur de chaque manche reçoit un jeton. Le premier à atteindre le total requis gagne (7 à deux)."],
+  tip:"Retenir les cartes défaussées te permet de deviner la main des autres."},
+ {n:"Jaipur", a:["jaipur"], p:[2,2], t:[30,30], l:2, tags:["cartes","strategie"],
+  d:"Un duel de marchands : collectez des marchandises, vendez-les au meilleur moment et gérez vos chameaux.",
+  r:["À son tour, on prend une marchandise, tous les chameaux, échange des cartes ou vend des marchandises d'un même type.",
+     "Plus on vend de cartes d'un coup, plus les bonus sont importants. Les jetons de valeur élevée partent en premier.",
+     "La manche finit quand 3 piles de jetons sont vides. Le gagnant de 2 manches l'emporte."],
+  tip:"Prendre tous les chameaux d'un coup donne un avantage... mais déverse des marchandises à ton adversaire."},
+ {n:"Patchwork", a:["patchwork"], p:[2,2], t:[15,30], l:2, tags:["puzzle","abstrait","strategie"],
+  d:"Un duo zen : achetez des morceaux de tissu avec des boutons et remplissez votre couette sans trou.",
+  r:["Le joueur le plus en arrière sur la piste du temps joue. On achète un patch avec des boutons ou on avance sur la piste pour en gagner.",
+     "Chaque patch doit être posé sur sa couette 9x9, sans chevauchement.",
+     "À la fin : un point par bouton, moins 2 par case vide. Le bonus 7x7 vaut 7 points."],
+  tip:"Un patch qui rapporte des boutons tôt vaut bien plus qu'un patch qui rapporte tard."},
+ {n:"Cascadia", a:["cascadia"], p:[1,4], t:[30,45], l:2, tags:["puzzle","famille","solo"],
+  d:"Composez un paysage de la nature sauvage du Pacifique : habitats et animaux à placer avec soin.",
+  r:["À son tour, on choisit un couple tuile de terrain + jeton animal et on les place dans son territoire.",
+     "Les jetons ne se posent que sur des tuiles qui acceptent cet animal.",
+     "À la fin : points pour les couloirs d'habitats, motifs d'animaux et bonus. Le meilleur total gagne."],
+  tip:"Pense à placer des tuiles qui acceptent plusieurs animaux pour garder de la flexibilité."},
+ {n:"Takenoko", a:["takenoko"], p:[2,4], t:[45,45], l:2, tags:["famille","strategie","puzzle"],
+  d:"Un jardinier et un panda dans un jardin japonais : cultivez du bambou et remplissez vos objectifs.",
+  r:["Chaque tour : le dé météo donne un bonus, puis on réalise 2 actions parmi : tuile parcelle, irrigation, jardinier, panda, objectif.",
+     "Le jardinier fait pousser le bambou, le panda le mange.",
+     "Les objectifs terminés rapportent des points. Le premier à en remplir assez déclenche la fin (9 à 2 joueurs)."],
+  tip:"Prépare tes objectifs en même temps : un panda bien placé peut en servir plusieurs."},
+ {n:"Sushi Go", a:["sushi go","sushi go party"], p:[2,5], t:[15,15], l:1, tags:["cartes","famille","draft"],
+  d:"Du draft de cartes ultra simple et rapide, sur le thème du sushi.",
+  r:["Chaque joueur choisit une carte de sa main puis passe le reste à son voisin.",
+     "Les cartes se combinent en sets (sashimis, tempuras, nigiris...) pour marquer des points.",
+     "On joue 3 manches. Les maki et les puddings départagent à la fin."],
+  tip:"Garde un œil sur ce que ton voisin laisse passer : ça te dit ce qu'il collectionne."},
+ {n:"Dobble", a:["dobble","spot it"], p:[2,8], t:[15,15], l:1, tags:["ambiance","famille"],
+  d:"Un seul symbole en commun entre deux cartes : le plus rapide à le trouver l'emporte.",
+  r:["Chaque carte a 8 symboles et deux cartes quelconques ont toujours exactement un symbole en commun.",
+     "Plusieurs mini-jeux sont proposés. Le plus simple : la Tour infernale, on trouve le symbole commun avec la carte du dessus de sa pile.",
+     "Les cartes trouvées sont gagnées. Le gagnant est celui qui a la plus grosse pile à la fin."],
+  tip:"Fixe ton regard sur une seule carte et cherche une forme à la fois."},
+ {n:"6 qui prend !", a:["6 qui prend","six qui prend"], p:[2,10], t:[30,45], l:1, tags:["cartes","ambiance"],
+  d:"Posez vos cartes en même temps et évitez de ramasser des têtes de bœuf.",
+  r:["Chacun choisit une carte en secret. Toutes sont révélées en même temps.",
+     "Elles sont posées dans l'ordre croissant, sur la rangée dont la dernière carte est la plus proche (mais inférieure).",
+     "Qui pose la 6e carte d'une rangée la ramasse et prend ses têtes de bœuf. Le moins de têtes à la fin gagne."],
+  tip:"Surveille la longueur des rangées : tout le monde veut éviter la 5e place."},
+ {n:"Gloomhaven : Les Mâchoires du Lion", a:["gloomhaven","gloomhaven les machoires du lion","machoires du lion","jaws of the lion"], p:[1,4], t:[60,120], l:4, tags:["coop","aventure","strategie","cartes","solo"],
+  d:"Un jeu d'aventure tactique en campagne : combats gérés par cartes, scénarios évolutifs et progression de personnage.",
+  r:["À chaque tour, chaque héros joue 2 cartes de sa main : une action en haut, une en bas.",
+     "L'initiative de la première carte jouée détermine l'ordre entre héros et monstres.",
+     "Les cartes utilisées partent en défausse ou sont perdues. Si un héros n'a plus de cartes, il est épuisé. On gagne un scénario en remplissant ses objectifs."],
+  tip:"Surveille ton paquet : gérer l'épuisement est la clé de la survie."},
+ {n:"Spirit Island", a:["spirit island"], p:[1,4], t:[90,120], l:5, tags:["coop","strategie","cartes","solo"],
+  d:"Incarnez des esprits de l'île et repoussez les colons envahisseurs. Très profond, très difficile.",
+  r:["Chaque tour : les esprits agissent (jouer des cartes de pouvoir, croissance), puis les envahisseurs agissent.",
+     "Les envahisseurs explorent, bâtissent puis ravagent selon un ordre prévisible : on peut planifier.",
+     "On gagne en terrifiant les envahisseurs ou en les éliminant. On perd si l'île est ravagée."],
+  tip:"Commence avec un esprit simple et une difficulté basse : la prise en main est exigeante."},
+ {n:"Mysterium", a:["mysterium"], p:[2,7], t:[40,60], l:2, tags:["coop","deduction","ambiance","creatif"],
+  d:"Un fantôme communique avec des médiums par visions (cartes illustrées) pour résoudre son meurtre.",
+  r:["Le joueur-fantôme ne peut pas parler et envoie des cartes de vision illustrées à chaque médium.",
+     "Chaque médium interprète les images pour deviner son suspect, puis son lieu, puis son arme.",
+     "Si tous les médiums réussissent à temps, on tente le final : un seul coupable à retrouver, avec le vote de l'équipe."],
+  tip:"Fantôme : relie les cartes à des symboles évidents, pas à des détails cachés."}
+];
+
+/* ============ Utilitaires ============ */
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/œ/g,"oe").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+
+GAMES.forEach((g,i)=>{ g.i=i; g.na=g.a.map(norm); });
+const ALIASES = GAMES.flatMap(g=>g.na.map(a=>({a,g}))).sort((x,y)=>y.a.length-x.a.length);
+
+function findGame(t){
+  const hay = " "+t+" ";
+  for(const {a,g} of ALIASES){
+    if(hay.includes(" "+a+" ")) return g;
+  }
+  return null;
+}
+const fmtTime = m => m>=60 ? Math.floor(m/60)+"h"+(m%60?String(m%60).padStart(2,"0"):"") : m+" min";
+const plTxt = g => g.p[0]===g.p[1] ? g.p[0]+" joueurs" : g.p[0]+" à "+g.p[1]+" joueurs";
+const tmTxt = g => g.t[0]===g.t[1] ? g.t[0]+" min" : g.t[0]+" à "+g.t[1]+" min";
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+/* ============ État ============ */
+const state = { players:null, maxTime:null, minTime:null, level:null, tags:[], lastGame:null, pool:[], offset:0 };
+const hasFilters = () => state.players!=null || state.maxTime!=null || state.minTime!=null || state.level || state.tags.length;
+function resetFilters(){ state.players=state.maxTime=state.minTime=state.level=null; state.tags=[]; state.pool=[]; state.offset=0; }
+
+/* ============ Analyse du message ============ */
+const NUMW = {deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10};
+const TAGRX = {
+  coop:/\bcoop|\bcollaborati|ensemble contre|tous ensemble/,
+  famille:/\bfamill|\benfants?\b|\bpetits?\b|\bkids?\b|\bjunior/,
+  ambiance:/ambiance|\bapero|\brire\b|\brigol|\bfete\b|\bparty\b|\bmarrant|\bdrole|entre amis|\bsoiree/,
+  strategie:/strateg|reflexion|cerebral|\bgestion/,
+  bluff:/bluff|mensong|trahison|menteur|\bmentir/,
+  deduction:/deduction|enquete|mystere|devin/,
+  cartes:/\bcartes?\b|\bdeck\b/,
+  puzzle:/puzzle|\btuiles?\b|\bplacement/,
+  aventure:/aventure|campagne|narratif|\bscenario/,
+  classique:/classique|\bculte\b|incontournable/,
+  equipes:/\bequipes?\b/,
+  creatif:/creatif|imagination|dessin/,
+  deckbuilding:/deckbuilding|deck building|construction de deck/
+};
+
+function parseFilters(raw){
+  const t = raw.replace(/\b(deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\b/g, m=>NUMW[m]);
+  const f = {tags:[]}; let m;
+
+  if((m=t.match(/\b(\d{1,2}) (?:joueurs?|personnes?|pers|amis|potes|copains|copines|participants)\b/))
+   ||(m=t.match(/\b(?:a|pour|en)\s+(\d{1,2})\b(?!\s*(?:min|h\b|heures?|ans))/))){
+    f.players = +m[1];
+  } else if(/\b(duo|couple|amoureux|en tete a tete)\b/.test(t)) f.players=2;
+  else if(/\b(solo|seul|seule|tout seul)\b/.test(t)) f.players=1;
+  else if(/\b(grand groupe|beaucoup de monde|grosse tablee|nombreux|bande)\b/.test(t)) f.players=8;
+
+  const more = /plus de|au moins|minimum|durer/.test(t);
+  if((m=t.match(/(\d{1,3}) ?(?:min|minutes?)\b/))){ if(more) f.minTime=+m[1]; else f.maxTime=+m[1]; }
+  else if((m=t.match(/\b(\d{1,2}) ?h(?:eures?)?(?: ?(\d{1,2}))?\b/))){
+    const v=(+m[1])*60+(m[2]?+m[2]:0); if(more) f.minTime=v; else f.maxTime=v;
+  } else if(/\b(rapide|court|vite|express|pas long)\b/.test(t)) f.maxTime=30;
+  else if(/\b(long|longue|epique|marathon|toute la soiree)\b/.test(t)) f.minTime=90;
+
+  if(/debutant|simple|facile|accessible|initier|novice|decouverte|(sans|pas( trop)?( de)?) prise de tete/.test(t)) f.level="easy";
+  else if(/expert|complexe|costaud|difficile|gros jeu|prise de tete|pousse/.test(t)) f.level="hard";
+  else if(/intermediaire|moyen/.test(t)) f.level="mid";
+
+  for(const k in TAGRX) if(TAGRX[k].test(t)) f.tags.push(k);
+  f.found = f.players!=null || f.maxTime!=null || f.minTime!=null || !!f.level || f.tags.length>0;
+  return f;
+}
+function mergeFilters(f){
+  if(f.players!=null) state.players=f.players;
+  if(f.maxTime!=null){ state.maxTime=f.maxTime; state.minTime=null; }
+  if(f.minTime!=null){ state.minTime=f.minTime; state.maxTime=null; }
+  if(f.level) state.level=f.level;
+  f.tags.forEach(x=>{ if(!state.tags.includes(x)) state.tags.push(x); });
+}
+
+/* ============ Recherche ============ */
+function search(){
+  const s=state;
+  const okP=g=>s.players==null || (s.players>=g.p[0] && s.players<=g.p[1]);
+  const okT=g=>(s.maxTime==null || g.t[0]<=s.maxTime) && (s.minTime==null || g.t[1]>=s.minTime);
+  const okL=g=>!s.level || (s.level==="easy"?g.l<=2 : s.level==="mid"?(g.l>=2&&g.l<=3) : g.l>=4);
+  const all=g=>s.tags.every(x=>g.tags.includes(x));
+  const any=g=>!s.tags.length || s.tags.some(x=>g.tags.includes(x));
+  const score=g=>s.tags.filter(x=>g.tags.includes(x)).length;
+  const steps=[
+    {note:"", f:g=>okP(g)&&okT(g)&&okL(g)&&all(g)},
+    {note:"Rien ne correspond à tous tes critères à la fois, voici ce qui s'en rapproche le plus.", f:g=>okP(g)&&okT(g)&&okL(g)&&any(g)},
+    {note:"J'ai assoupli la durée et le niveau pour te proposer quelque chose.", f:g=>okP(g)&&any(g)},
+    {note:"Je n'ai gardé que le nombre de joueurs, voici ce que j'ai.", f:g=>okP(g)}
+  ];
+  for(const st of steps){
+    const res=GAMES.filter(st.f).sort((a,b)=>score(b)-score(a)||a.i-b.i);
+    if(res.length) return {res, note:st.note};
+  }
+  return {res:[], note:""};
+}
+function describe(){
+  const a=[]; const s=state;
+  if(s.players!=null) a.push(s.players+(s.players>1?" joueurs":" joueur"));
+  if(s.maxTime!=null) a.push("moins de "+fmtTime(s.maxTime));
+  if(s.minTime!=null) a.push("plus de "+fmtTime(s.minTime));
+  if(s.level) a.push({easy:"niveau simple",mid:"niveau intermédiaire",hard:"niveau costaud"}[s.level]);
+  s.tags.forEach(x=>a.push(TAGLABEL[x]));
+  return a.join(", ");
+}
+
+/* ============ Rendu ============ */
+const log=document.getElementById("log");
+const filtersBar=document.getElementById("filters");
+const scrollDown=()=>{ log.scrollTop=log.scrollHeight; };
+
+function cardHTML(g){
+  return `<div class="card">
+    <div class="card-h"><strong>${g.n}</strong><span class="lvl">${LVL[g.l]}</span></div>
+    <div class="meta">${plTxt(g)} · ${tmTxt(g)}</div>
+    <p>${g.d}</p>
+    <div class="tags">${g.tags.map(x=>`<span class="tag">${TAGLABEL[x]}</span>`).join("")}</div>
+    <div class="acts">
+      <button data-send="Règles de ${g.n}">Règles</button>
+      <button data-send="Jeux similaires à ${g.n}">Similaires</button>
+    </div></div>`;
+}
+function addRow(who){
+  const row=document.createElement("div"); row.className="row "+who;
+  const b=document.createElement("div"); b.className="bubble";
+  row.appendChild(b); log.appendChild(row); scrollDown(); return {row,b};
+}
+function userSay(text){ addRow("user").b.textContent=text; }
+function say(html, quick){
+  const {row,b}=addRow("bot");
+  b.innerHTML='<span class="typing" aria-label="Meeple écrit"><i></i><i></i><i></i></span>';
+  setTimeout(()=>{
+    b.innerHTML=html;
+    if(quick && quick.length){
+      const q=document.createElement("div"); q.className="quick";
+      quick.forEach(x=>{ const btn=document.createElement("button"); btn.type="button"; btn.textContent=x; btn.dataset.send=x; q.appendChild(btn); });
+      b.appendChild(q);
+    }
+    scrollDown();
+  }, 380);
+}
+function renderChips(){
+  const s=state, items=[];
+  if(s.players!=null) items.push({k:"players", l:s.players+(s.players>1?" joueurs":" joueur")});
+  if(s.maxTime!=null) items.push({k:"time", l:"≤ "+fmtTime(s.maxTime)});
+  if(s.minTime!=null) items.push({k:"time", l:"≥ "+fmtTime(s.minTime)});
+  if(s.level) items.push({k:"level", l:{easy:"simple",mid:"intermédiaire",hard:"costaud"}[s.level]});
+  s.tags.forEach(x=>items.push({k:"tag:"+x, l:TAGLABEL[x]}));
+  filtersBar.innerHTML=items.map(i=>`<button type="button" class="chip" data-rm="${i.k}" title="Retirer ce critère">${i.l} ×</button>`).join("");
+  filtersBar.hidden=!items.length;
+}
+
+/* ============ Réponses ============ */
+const QUICK_HOME=["Un jeu pour 4 joueurs","Jeu coopératif","Pour jouer à deux","Surprends-moi","Règles de Catan"];
+
+function replyWelcome(){
+  say(`<p>Salut, je suis <strong>Meeple</strong>, ton assistant jeux de société.</p>
+       <p>Dis-moi avec combien de joueurs tu veux jouer, combien de temps vous avez et ce que vous aimez (coopératif, ambiance, stratégie...). Je peux aussi t'expliquer les règles d'un jeu ou t'en proposer de similaires.</p>`, QUICK_HOME);
+}
+function replyHelp(){
+  say(`<p>Voici ce que je sais faire :</p>
+  <ol>
+    <li><strong>Recommander</strong> : « un jeu rapide pour 5 joueurs », « un coop pour débutants », « stratégie, 2h ».</li>
+    <li><strong>Expliquer</strong> : « règles de Pandemic », « comment on joue à Azul ? ».</li>
+    <li><strong>Comparer</strong> : « jeux similaires à Catan ».</li>
+    <li><strong>Surprendre</strong> : « surprends-moi ». Et « encore » pour d'autres idées.</li>
+  </ol><p>Les critères sont mémorisés, retire-les en cliquant dessus au-dessus de la zone de saisie.</p>`, QUICK_HOME);
+}
+function replyList(){
+  const btns=GAMES.map(g=>`<button type="button" data-send="${g.n}">${g.n}</button>`).join("");
+  say(`<p>J'ai ${GAMES.length} jeux en mémoire. Clique sur l'un d'eux :</p><div class="quick">${btns}</div>`);
+}
+function replyGame(g){
+  state.lastGame=g;
+  say(`<p>Voici une fiche rapide :</p>${cardHTML(g)}`, ["Règles de "+g.n, "Jeux similaires à "+g.n]);
+}
+function replyRules(g){
+  state.lastGame=g;
+  say(`<p><strong>Règles de ${g.n}</strong> (${plTxt(g)}, ${tmTxt(g)})</p>
+       <ol>${g.r.map(x=>`<li>${x}</li>`).join("")}</ol>
+       <p><em>Astuce :</em> ${g.tip}</p>
+       <p class="note">C'est un résumé : consulte la règle officielle pour les détails et les cas particuliers.</p>`,
+       ["Jeux similaires à "+g.n, "Surprends-moi"]);
+}
+function replySimilar(g){
+  state.lastGame=g;
+  const sc=o=>o.tags.filter(x=>g.tags.includes(x)).length*2 - Math.abs(o.l-g.l);
+  const res=GAMES.filter(o=>o!==g).sort((a,b)=>sc(b)-sc(a)||a.i-b.i).slice(0,3);
+  say(`<p>Si tu aimes <strong>${g.n}</strong>, tu devrais aimer :</p>${res.map(cardHTML).join("")}`, ["Règles de "+g.n, "Surprends-moi"]);
+}
+function replyRandom(){
+  const base=hasFilters()?search().res:GAMES;
+  const g=pick(base.length?base:GAMES);
+  state.lastGame=g;
+  say(`<p>Je te propose de tenter :</p>${cardHTML(g)}`, ["Surprends-moi","Règles de "+g.n]);
+}
+function replyRecommend(){
+  renderChips();
+  const {res,note}=search();
+  if(!res.length){
+    say(`<p>Je n'ai aucun jeu pour ces critères (${describe()}). Essaie un autre nombre de joueurs ou retire un critère.</p>`, ["Réinitialiser","Surprends-moi"]);
+    return;
+  }
+  state.pool=res; state.offset=0;
+  showPool(note);
+}
+function showPool(note){
+  const chunk=state.pool.slice(state.offset, state.offset+4);
+  if(!chunk.length){
+    say(`<p>Je n'ai plus d'autre idée avec ces critères. Tu peux en retirer un ou dire « Réinitialiser ».</p>`, ["Réinitialiser","Surprends-moi"]);
+    return;
+  }
+  state.offset+=chunk.length;
+  const d=describe();
+  const intro = note ? `<p class="note">${note}</p>` : `<p>${d?`Pour <strong>${d}</strong>`:"Voici des idées"} :</p>`;
+  const left=state.pool.length-state.offset;
+  const quick=[]; if(left>0) quick.push("Encore des idées"); quick.push("Surprends-moi","Réinitialiser");
+  say(intro+chunk.map(cardHTML).join("")+(left>0?`<p>Il en reste ${left} autre${left>1?"s":""} si tu veux.</p>`:""), quick);
+}
+function replyFallback(){
+  say(`<p>Je n'ai pas bien compris. Tu peux me donner un nombre de joueurs, une durée, un style, ou le nom d'un jeu.</p>`, QUICK_HOME);
+}
+
+/* ============ Cerveau ============ */
+function handle(raw){
+  const t=norm(raw); if(!t) return;
+  const wantsRules=/\bregles?\b|comment (on )?joue|comment jouer|explique|principe|but du jeu|mode d emploi/.test(t);
+  const wantsSimilar=/similaire|ressemble|dans le genre|equivalent|du meme style|autre jeu comme|\bcomme\b/.test(t);
+
+  if(/reinit|\breset\b|recommenc|efface|nouvelle recherche|oublie|de zero|tout effacer/.test(t)){
+    resetFilters(); renderChips();
+    return say("<p>C'est reparti de zéro. Qu'est-ce qui te ferait plaisir ?</p>", QUICK_HOME);
+  }
+  if(/\bmerci\b|\bgenial\b|\bparfait\b|\bsuper\b/.test(t))
+    return say("<p>Avec plaisir. Bonne partie !</p>", ["Surprends-moi","Jeu coopératif"]);
+  if(/au revoir|a bientot|\bbye\b|\ba plus\b/.test(t))
+    return say("<p>À bientôt, et que les dés te soient favorables.</p>");
+  if(/\baide\b|\bhelp\b|que sais tu|que peux tu|tu peux faire|comment ca marche|\bcommandes?\b/.test(t))
+    return replyHelp();
+  if(/\bliste\b|catalogue|tous les jeux|quels jeux (connais|as)/.test(t))
+    return replyList();
+
+  const g=findGame(t);
+  if(g){
+    if(wantsRules) return replyRules(g);
+    if(wantsSimilar) return replySimilar(g);
+    return replyGame(g);
+  }
+  if(wantsRules && state.lastGame) return replyRules(state.lastGame);
+  if(wantsSimilar && state.lastGame && !parseFilters(t).found) return replySimilar(state.lastGame);
+
+  if(/hasard|surprends|au pif|n importe|aleatoire|je ne sais pas|sais pas/.test(t)) return replyRandom();
+
+  if(/^(encore|autres?|d autres|suivants?|autre chose|plus d idees)/.test(t) && state.pool.length)
+    return showPool("");
+
+  const f=parseFilters(t);
+  const wantsReco=/recommande|conseille|propose|cherche|idee|quel jeu|jeu pour|un jeu|jeux/.test(t);
+  if(f.found || wantsReco){
+    mergeFilters(f);
+    return replyRecommend();
+  }
+  if(/^(salut|bonjour|bonsoir|hello|coucou|hey|yo)\b/.test(t))
+    return say("<p>Salut ! Quel genre de jeu cherches-tu aujourd'hui ?</p>", QUICK_HOME);
+  replyFallback();
+}
+
+/* ============ Interactions ============ */
+function send(text){
+  text=text.trim(); if(!text) return;
+  log.querySelectorAll(".quick").forEach(q=>q.remove());
+  userSay(text);
+  handle(text);
+}
+document.getElementById("form").addEventListener("submit",e=>{
+  e.preventDefault();
+  const i=document.getElementById("input");
+  const v=i.value; i.value=""; send(v); i.focus();
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-send]");
+  if(b){ send(b.dataset.send); return; }
+  const r=e.target.closest("[data-rm]");
+  if(r){
+    const k=r.dataset.rm;
+    if(k==="players") state.players=null;
+    else if(k==="time") state.maxTime=state.minTime=null;
+    else if(k==="level") state.level=null;
+    else if(k.startsWith("tag:")) state.tags=state.tags.filter(x=>x!==k.slice(4));
+    renderChips();
+    if(hasFilters()) replyRecommend();
+    else say("<p>Critères retirés. Dis-moi ce que tu cherches.</p>", QUICK_HOME);
+  }
+});
+
+replyWelcome();
+</script>
+</body>
+</html>

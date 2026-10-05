@@ -86,13 +86,35 @@ Pour chaque checkpoint : cochez la case quand toute la preuve de la fiche est r�
 - Deux phrases de conclusion : La modification 2 (mémoire) a le plus cassé de choses : elle a rendu la page fragile face à une valeur inattendue dans `localStorage`. Sans ma liste de contrôle et la chasse à l'angle mort, je ne l'aurais pas vu, parce que la nouveauté marchait et que le plantage n'apparaît qu'avec une valeur que personne ne tape à la main.
 - Difficulté qui reste : <ce qui t'a bloqué, ou « aucune »>
 
-### J1-04 · 🎲 Même prompt, autre réponse — [fiche](checkpoints/J1-04-meme-prompt.md)
+### J1-04 — Même prompt, trois fois
 
-- [ ] Validé
-- Le prompt de référence (identique aux trois essais) :
-- Le tableau des écarts (trois colonnes A, B, C ; au moins quatre critères ; des faits, pas des impressions) :
-- Une phrase de conclusion (ce que ces écarts autorisent, ce qu'ils interdisent de supposer) :
-- Difficulté qui reste :
+**Prompt de référence (identique pour les trois essais) :**
+```text
+fais-moi un chatbot sur les jeux de société, dans une seule page HTML que j'ouvre dans mon navigateur.
+```
+
+**Fichiers :** `essais-n0/essai-A.html` (BoardBot), `essai-B.html` (Ludo), `essai-C.html` (Meeple).
+Trois conversations neuves, sans correction. Les réponses viennent de Claude (pas de Mistral).
+
+| Critère | A (BoardBot) | B (Ludo) | C (Meeple) |
+|---|---|---|---|
+| Taille du fichier | 323 lignes | 452 lignes | 618 lignes |
+| Usages de `innerHTML` | 2 | 0 | 3 |
+| Message vide / espaces | ignoré | ignoré | ignoré |
+| Question sur le thème (« règles de Catan ») | fiche Catan | règles de Catan | règles de Catan |
+| Question hors thème (capitale de la France) | « Je n'ai pas bien compris » + 3 suggestions | « Je n'ai pas bien compris » + suggestions | « Je n'ai pas bien compris » + suggestions |
+| Messages après F5 | perdus (7 → 1) | perdus (7 → 1) | perdus (7 → 1) |
+| Injection `<img onerror>` tapée dans le champ | inerte | inerte | inerte |
+| Affichage à 360 px | bouton « Envoyer » coupé (débordement de 46 px) | OK | OK |
+| Requêtes réseau, erreurs console | aucune | aucune | aucune |
+
+**Ce qui varie d'un essai à l'autre :** le nombre de lignes (323 / 452 / 618), le nom du bot et la structure (critères mémorisés et pastilles cliquables en C, boutons de suggestion en A et B).
+
+**Ce qui ne varie pas :** aucun des trois ne garde l'historique après F5, et chacun répond au hors-thème par une phrase d'incompréhension suivie de suggestions.
+
+**Conclusion :** avec le même prompt, trois essais donnent trois programmes différents mais identiques sur ce que le prompt n'a pas demandé (sauvegarde, limite de longueur), donc ce qu'on ne précise pas, on ne l'obtient pas.
+
+**Difficulté / limites :** je n'ai pas relu le code ligne par ligne. Les tests ont été faits dans Chromium sans interface (le navigateur tourne sans fenêtre). Mon petit script de mesure repère les messages par leur classe CSS (`.msg` ou `.row`).
 
 ## L'agent (N1 Demander)
 

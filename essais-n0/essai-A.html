@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BoardBot - Jeux de société</title>
+<style>
+  :root{
+    --bg:#f6f1e9; --panel:#fffdf8; --ink:#2b2622; --muted:#7a6f64;
+    --accent:#c8553d; --accent-ink:#fff; --bot:#efe6d8; --user:#c8553d;
+    --line:#e4d9c8; --card:#fff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#17140f; --panel:#201c16; --ink:#f0e8dc; --muted:#a39886;
+      --accent:#e0705a; --accent-ink:#17140f; --bot:#2d271f; --user:#e0705a;
+      --line:#383025; --card:#262017;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; justify-content:center;
+  }
+  .app{
+    width:100%; max-width:720px; height:100dvh; display:flex; flex-direction:column;
+    background:var(--panel); border-inline:1px solid var(--line);
+  }
+  header{padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px}
+  header .logo{font-size:26px}
+  header h1{font-size:18px; margin:0}
+  header p{margin:0; font-size:13px; color:var(--muted)}
+  #chat{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px}
+  .msg{max-width:88%; padding:10px 14px; border-radius:16px; word-wrap:break-word}
+  .bot{background:var(--bot); align-self:flex-start; border-bottom-left-radius:4px}
+  .user{background:var(--user); color:var(--accent-ink); align-self:flex-end; border-bottom-right-radius:4px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:8px}
+  .card .meta{font-size:13px; color:var(--muted)}
+  .card .name{font-weight:700}
+  .btns{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  button.q{
+    font:inherit; font-size:13px; cursor:pointer; color:var(--accent); background:transparent;
+    border:1px solid var(--accent); border-radius:999px; padding:3px 11px;
+  }
+  button.q:hover{background:var(--accent); color:var(--accent-ink)}
+  .crit{font-size:13px; color:var(--muted); margin-bottom:4px}
+  .typing span{display:inline-block; width:7px; height:7px; margin:0 2px; border-radius:50%; background:var(--muted); animation:b 1s infinite}
+  .typing span:nth-child(2){animation-delay:.15s} .typing span:nth-child(3){animation-delay:.3s}
+  @keyframes b{0%,80%,100%{opacity:.3; transform:translateY(0)}40%{opacity:1; transform:translateY(-3px)}}
+  form{display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line)}
+  input{
+    flex:1; font:inherit; padding:10px 14px; border-radius:999px;
+    border:1px solid var(--line); background:var(--card); color:var(--ink); outline:none;
+  }
+  input:focus{border-color:var(--accent)}
+  form button{
+    font:inherit; font-weight:600; border:0; border-radius:999px; padding:0 20px;
+    background:var(--accent); color:var(--accent-ink); cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">🎲</div>
+    <div><h1>BoardBot</h1><p>Ton assistant jeux de société</p></div>
+  </header>
+  <div id="chat" aria-live="polite"></div>
+  <form id="form" autocomplete="off">
+    <input id="input" placeholder="Ex : un jeu coopératif pour 4, moins de 30 min" aria-label="Ton message">
+    <button type="submit">Envoyer</button>
+  </form>
+</div>
+
+<script>
+/* ---------- Base de connaissances ---------- */
+// [nom, joueursMin, joueursMax, duree(min), age, complexite(1-5), tags, pitch, regles, alias]
+const G = [
+["Catan",3,4,75,10,3,["strategie","famille","gestion"],"Commerce, négociation et construction sur une île.","Lance les dés : les hexagones portant le total produisent des ressources. Échange avec les autres joueurs ou la banque, puis construis routes, colonies et villes. Le premier à 10 points de victoire gagne.",["catan","colons de catan","les colons de catan"]],
+["Carcassonne",2,5,35,7,2,["famille","tuiles","strategie"],"Pose de tuiles pour bâtir un paysage médiéval.","À ton tour, pioche une tuile et pose-la contre celles déjà en place. Tu peux y placer un partisan (route, ville, abbaye ou pré). Les éléments terminés rapportent des points. La partie s'arrête quand la pioche est vide.",["carcassonne"]],
+["Les Aventuriers du Rail",2,5,50,8,2,["famille","cartes","strategie"],"Relie des villes en posant tes wagons.","Pioche des cartes wagon, puis pose des wagons pour prendre possession d'une route. Remplis tes billets de destination : ils rapportent des points s'ils sont accomplis et en coûtent sinon. Le plus gros score gagne.",["aventuriers du rail","ticket to ride"]],
+["7 Wonders",2,7,30,10,3,["strategie","cartes"],"Développe ta civilisation en 3 âges.","Chaque âge, tu choisis une carte et passes le reste à ton voisin (draft). Tu construis des bâtiments, avances ta merveille ou défausses pour des pièces. Les conflits militaires se jouent avec tes voisins. Les points se comptent à la fin des 3 âges.",["7 wonders","seven wonders"]],
+["7 Wonders Duel",2,2,30,10,2,["duel","strategie","cartes"],"La version à deux de 7 Wonders.","Prends une carte accessible dans la pyramide pour la construire, la défausser ou bâtir une merveille. Trois victoires possibles : militaire, scientifique, ou aux points.",["7 wonders duel","seven wonders duel"]],
+["Pandemic",2,4,45,8,3,["coop","strategie","cartes"],"Sauvez le monde de 4 maladies, ensemble.","Chaque joueur a un rôle. À ton tour : 4 actions (se déplacer, soigner, construire une station, échanger des cartes), puis tu pioches des cartes qui propagent les maladies. Défaussez 5 cartes d'une couleur pour guérir. Vous gagnez en guérissant les 4 maladies, et perdez si trop d'éclosions ou d'épidémies surviennent.",["pandemic","pandemie"]],
+["Dixit",3,8,30,8,1,["creatif","ambiance","famille"],"Des cartes illustrées à deviner avec un indice poétique.","Le conteur choisit une carte et donne un indice. Les autres jouent une carte de leur main qui colle à l'indice. Tout est mélangé, puis chacun vote. Le conteur marque si certains, mais pas tous, trouvent sa carte.",["dixit"]],
+["Codenames",2,8,15,10,1,["ambiance","mots","bluff"],"Deux équipes, deux maîtres-espions, une grille de mots.","Le maître-espion donne un mot et un nombre pour faire deviner les mots de son équipe. Évitez les mots adverses et surtout l'assassin. La première équipe qui a trouvé tous ses agents gagne.",["codenames","code names"]],
+["Azul",2,4,35,8,2,["tuiles","strategie","famille"],"Compose le plus beau mur de faïence.","Prends toutes les tuiles d'une même couleur sur une fabrique, place-les sur une ligne de motif. Les lignes complètes passent sur ton mur et rapportent des points selon les tuiles voisines. Les tuiles en trop te coûtent des points.",["azul"]],
+["Splendor",2,4,30,10,2,["gestion","cartes","strategie"],"Marchand de gemmes : construis ton moteur économique.","À ton tour : prends des jetons gemmes, ou réserve une carte, ou achète une carte de développement. Les cartes donnent des bonus permanents et des points, et attirent des nobles. Premier à 15 points.",["splendor"]],
+["Wingspan",1,5,60,10,3,["gestion","cartes","strategie"],"Attire des oiseaux dans ta réserve naturelle.","Joue des cartes oiseau dans 3 habitats, puis active les rangées pour gagner nourriture, œufs et cartes. 4 manches avec objectifs. Le plus de points gagne.",["wingspan"]],
+["Time's Up",4,12,30,12,1,["ambiance","mots"],"Faire deviner des célébrités en 3 manches.","Manche 1 : tu décris librement. Manche 2 : un seul mot. Manche 3 : mime seulement. Ce sont les mêmes cartes à chaque manche, donc la mémoire compte.",["time s up","times up","time up"]],
+["Skyjo",2,8,30,8,1,["cartes","famille","ambiance"],"Le moins de points possible, en jouant sur la chance.","Chacun a 12 cartes face cachée. Échange une carte contre la défausse ou une pioche pour baisser ton total. Trois cartes identiques en colonne sont éliminées. Quand un joueur a tout révélé, la manche s'arrête. Le plus bas gagne.",["skyjo"]],
+["Uno",2,10,30,7,1,["cartes","famille","ambiance"],"Le classique des cartes de couleur.","Défausse une carte de même couleur ou de même valeur que la précédente. Les cartes action changent la donne. Dis « Uno » à ta dernière carte. Premier à vider sa main.",["uno"]],
+["Dobble",2,8,15,6,1,["reflexe","famille","ambiance"],"Trouve vite le symbole commun.","Deux cartes ont toujours exactement un symbole en commun. Le premier qui le nomme remporte la carte. Plusieurs mini-jeux sont proposés dans la boîte.",["dobble"]],
+["Jungle Speed",2,10,15,7,1,["reflexe","ambiance","famille"],"Réflexes et totem en bois.","Retourne tes cartes à tour de rôle. Si deux symboles identiques apparaissent, duel : le premier à attraper le totem gagne et refile ses cartes. Le premier sans carte gagne.",["jungle speed"]],
+["Les Loups-Garous de Thiercelieux",8,18,30,10,1,["bluff","ambiance"],"Village contre loups, déduction sociale.","Chacun reçoit un rôle secret. La nuit, les loups dévorent un villageois. Le jour, le village débat et vote pour éliminer un suspect. Les villageois gagnent s'ils éliminent tous les loups, et inversement.",["loup garou","loups garous","loups garous de thiercelieux"]],
+["Love Letter",2,4,20,10,1,["cartes","bluff","duel"],"16 cartes, des intrigues et une lettre à remettre.","Pioche une carte, puis joue-en une des deux en appliquant son effet. À la fin, la carte la plus forte, ou le dernier joueur en lice, remporte la manche. Récolte des jetons de faveur.",["love letter"]],
+["Terraforming Mars",1,5,120,12,4,["gestion","strategie","cartes"],"Rends Mars habitable en dirigeant une corporation.","Joue des projets pour produire des ressources et faire monter température, oxygène et océans. Chaque hausse t'offre des points de terraformation. Le jeu prend fin quand les 3 jauges sont atteintes.",["terraforming mars"]],
+["Gloomhaven",1,4,90,14,5,["aventure","strategie","coop"],"Campagne tactique géante, sans dés.","Chaque scénario est un combat en grille. Tu joues 2 cartes par tour, avec un déplacement et une attaque, et gères ton épuisement de cartes. Les scénarios s'enchaînent en campagne.",["gloomhaven"]],
+["Root",2,4,75,10,4,["strategie","aventure"],"Des factions asymétriques qui se disputent la forêt.","Chaque faction (Marquise, Alliance, Oiseaux, Vagabond) a ses propres règles et sa propre façon de marquer des points. Premier à 30 points.",["root"]],
+["Small World",2,5,60,8,2,["strategie","famille","ambiance"],"Conquiers un monde trop petit pour tout le monde.","Associe une race et un pouvoir, conquiers des territoires, marque des points selon ta zone, puis mets ton peuple en déclin pour en choisir un autre.",["small world"]],
+["Agricola",1,5,120,12,4,["gestion","strategie"],"Développe ta ferme et nourris ta famille.","Placement d'ouvriers : chaque tour, tu envoies ta famille faire une action (labourer, semer, construire...). Ne manque surtout pas de nourriture aux récoltes.",["agricola"]],
+["Kingdomino",2,4,15,8,1,["tuiles","famille","strategie"],"Dominos et royaumes.","Choisis un domino de paysage et connecte-le à ton royaume 5×5. Le score est la taille de chaque zone multipliée par ses couronnes.",["kingdomino"]],
+["Mysterium",2,7,45,10,2,["coop","enquete","creatif"],"Un fantôme guide les médiums avec des visions.","Le fantôme ne peut pas parler : il envoie des cartes illustrées pour indiquer à chaque médium un suspect, un lieu et une arme. Réussis à tout identifier avant la fin des 7 tours.",["mysterium"]],
+["Just One",3,7,20,8,1,["coop","mots","ambiance","famille"],"Un mot à faire deviner, avec des indices uniques.","Chacun écrit un indice d'un seul mot, en secret. Les indices identiques sont annulés. Le joueur actif devine le mot avec ce qui reste. Objectif : marquer un maximum de cartes ensemble.",["just one"]],
+["The Crew",2,5,20,10,2,["coop","cartes","strategie"],"Mission spatiale à base de plis, en silence.","Jeu de plis coopératif. Chaque mission impose que certains joueurs remportent des plis précis, sans parler de votre main. Une campagne de 50 missions.",["the crew","crew"]],
+["6 qui prend!",2,10,45,10,1,["cartes","ambiance","famille"],"Évite de ramasser des cartes à têtes de bœuf.","Tout le monde joue une carte en même temps. Elles sont ajoutées dans l'ordre croissant aux 4 rangées. Celui qui pose la 6e carte d'une rangée la ramasse, avec ses pénalités.",["6 qui prend","six qui prend"]],
+["Cluedo",3,6,45,8,2,["enquete","famille"],"Qui, où, avec quoi ?","Déplace-toi dans le manoir, fais des suppositions et interroge les autres pour éliminer des cartes. Fais une accusation finale quand tu es certain de toi.",["cluedo"]],
+["Monopoly",2,8,120,8,1,["famille","gestion"],"L'immobilier qui fâche en famille.","Lance les dés, achète des propriétés, construis maisons et hôtels, ramasse les loyers. Le dernier joueur non ruiné gagne. C'est long, donc fixe une durée avant de commencer !",["monopoly"]],
+["Takenoko",2,4,45,8,2,["famille","tuiles","strategie"],"Jardinier et panda dans un jardin japonais.","Pose des parcelles, irrigue-les, fais pousser du bambou. Remplis tes objectifs de jardinier, de panda et de parcelles. 3 actions à choisir par tour.",["takenoko"]],
+["Scrabble",2,4,90,10,2,["mots","famille"],"Le roi des jeux de lettres.","Forme des mots sur la grille avec tes lettres. Chaque lettre vaut des points, et les cases bonus les multiplient. Le plus gros score gagne.",["scrabble"]],
+["Skull",3,6,30,10,1,["bluff","ambiance","cartes"],"Roses, crâne et enchères de nerfs.","Chacun pose en secret une rose ou un crâne. On enchérit sur le nombre de roses qu'on pense pouvoir retourner sans tomber sur un crâne. Deux défis réussis gagnent.",["skull"]],
+["Patchwork",2,2,30,8,2,["duel","tuiles","strategie"],"Couture et optimisation à deux.","Achète des pièces de tissu avec tes boutons et assemble-les sur ton plateau 9×9. Le temps est une ressource : plus tu avances, plus tu agis. Marque des points avec les boutons et évite les trous.",["patchwork"]]
+];
+
+/* ---------- Utilitaires ---------- */
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’'`]/g," ").replace(/\s+/g," ").trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const WORDS = {un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10};
+const TAGS = {
+  coop:/coop|ensemble contre|tous ensemble/,
+  ambiance:/ambiance|soiree|party|rigol|\brire\b|fete|apero|delire|bande de potes/,
+  strategie:/strateg|reflexion|tactique|cerebral|reflechi/,
+  bluff:/bluff|mentir|menteur|deduction sociale|trahison/,
+  cartes:/\bcartes?\b/,
+  famille:/famille|familial|enfants?|petits|\bados?\b/,
+  enquete:/enquete|mystere|detective|polar/,
+  gestion:/gestion|construction|moteur|ressources|developper/,
+  mots:/\bmots?\b|vocabulaire|lettres/,
+  reflexe:/reflexe|rapidite|vitesse|agilite|speed/,
+  creatif:/creati|imagination|dessin|poesi|illustr/,
+  tuiles:/tuiles?|puzzle|domino/,
+  aventure:/aventure|campagne|legacy|fantasy|narratif|jeu de role/,
+  duel:/\bduel\b|face a face|1 contre 1/
+};
+const TAG_LABEL = {coop:"coopératif",ambiance:"ambiance",strategie:"stratégie",bluff:"bluff",cartes:"cartes",famille:"famille",enquete:"enquête",gestion:"gestion",mots:"mots",reflexe:"réflexes",creatif:"créatif",tuiles:"tuiles",aventure:"aventure",duel:"duel"};
+
+const games = G.map(([nom,pmin,pmax,duree,age,cx,tags,pitch,regles,alias]) =>
+  ({nom,pmin,pmax,duree,age,cx,tags,pitch,regles,alias:alias.map(norm)}));
+
+/* ---------- Analyse du message ---------- */
+function parseCriteria(t){
+  const c = {players:null,maxd:null,mind:null,maxc:null,minc:null,tags:new Set()};
+  let s = " " + t + " ", m;
+  // durée
+  if((m = s.match(/(\d+)\s*(?:h|heures?)(?:\s*(\d{1,2}))?(?!\w)/))){ c.maxd = +m[1]*60 + (+m[2]||0); s = s.replace(m[0]," "); }
+  else if((m = s.match(/(\d+)\s*(?:min(?:utes?)?|mn)\b/))){ c.maxd = +m[1]; s = s.replace(m[0]," "); }
+  else if(/\b(rapide|rapides|court|courts|vite|express|pas trop long)\b/.test(s)) c.maxd = 30;
+  if(/\b(long|longue|epique|marathon|toute la soiree)\b/.test(s)) c.mind = 75;
+  // joueurs
+  if((m = s.match(/(\d+)\s*(?:amis|potes|copains)/))) c.players = +m[1] + 1;
+  else if((m = s.match(/(\d+)\s*(?:joueurs?|personnes?|pers|participants)/))) c.players = +m[1];
+  else if((m = s.match(/\b(un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s*(?:joueurs?|personnes?|amis|potes)/))) c.players = WORDS[m[1]];
+  else if((m = s.match(/\ba\s+(\d+)\b/))) c.players = +m[1];
+  else if((m = s.match(/\ba\s+(deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\b/))) c.players = WORDS[m[1]];
+  else if(/\b(en duo|en couple|a deux|ma copine|mon copain|ma femme|mon mari|ma compagne|mon conjoint|ma cherie)\b/.test(s)) c.players = 2;
+  else if(/\b(solo|seul|seule)\b/.test(s)) c.players = 1;
+  // complexité
+  if(/\b(simple|simples|facile|faciles|debutants?|novices?|accessible|accessibles|initiation|decouverte)\b/.test(s)) c.maxc = 2;
+  if(/\b(expert|experts|complexe|complexes|costaud|gros jeu|pousse|poussee|confirme|confirmes|initie|inities|difficile)\b/.test(s)) c.minc = 3;
+  // genres
+  for(const k in TAGS) if(TAGS[k].test(s)) c.tags.add(k);
+  if(/enfants?|petits/.test(s) && c.maxc == null) c.maxc = 2;
+  return c;
+}
+const hasCriteria = c => c.players!=null || c.maxd || c.mind || c.maxc || c.minc || c.tags.size>0;
+
+function findGames(t){
+  const found = [];
+  games.forEach(g => g.alias.forEach(a => {
+    if(new RegExp("(^|\\W)" + a.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "(\\W|$)").test(t)) found.push({g,a});
+  }));
+  // garde le plus long alias si l'un est contenu dans l'autre (ex : 7 wonders / 7 wonders duel)
+  const out = found.filter(x => !found.some(y => y !== x && y.a.length > x.a.length && y.a.includes(x.a)));
+  return [...new Set(out.map(x => x.g))];
+}
+
+/* ---------- État ---------- */
+let ctx = fresh(), lastGame = null, lastList = [], offset = 0;
+function fresh(){ return {players:null,maxd:null,mind:null,maxc:null,minc:null,tags:new Set()}; }
+function merge(c){
+  for(const k of ["players","maxd","mind","maxc","minc"]) if(c[k] != null) ctx[k] = c[k];
+  c.tags.forEach(t => ctx.tags.add(t));
+}
+function critText(c){
+  const p = [];
+  if(c.players!=null) p.push(c.players + (c.players>1?" joueurs":" joueur"));
+  if(c.maxd) p.push("≤ " + c.maxd + " min");
+  if(c.mind) p.push("≥ " + c.mind + " min");
+  if(c.maxc) p.push("simple");
+  if(c.minc) p.push("expert");
+  c.tags.forEach(t => p.push(TAG_LABEL[t]));
+  return p.join(" · ");
+}
+
+/* ---------- Rendu ---------- */
+const chat = document.getElementById("chat");
+function add(cls, html, isText){
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  if(isText) d.textContent = html; else d.innerHTML = html;
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+const dots = g => "●".repeat(g.cx) + "○".repeat(5-g.cx);
+const players = g => g.pmin===g.pmax ? g.pmin : g.pmin + "-" + g.pmax;
+function card(g, withBtn=true){
+  return `<div class="card"><div class="name">${esc(g.nom)}</div>
+    <div class="meta">${players(g)} joueurs · ~${g.duree} min · ${g.age}+ · difficulté ${dots(g)}</div>
+    <div>${esc(g.pitch)}</div>
+    ${withBtn ? `<div class="btns"><button class="q" data-q="règles de ${esc(g.nom)}">Règles</button></div>` : ""}</div>`;
+}
+const chips = list => `<div class="btns">${list.map(q => `<button class="q" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`;
+
+function say(html){
+  const t = add("bot typing", "<span></span><span></span><span></span>");
+  setTimeout(() => { t.className = "msg bot"; t.innerHTML = html; chat.scrollTop = chat.scrollHeight; }, 350);
+}
+
+/* ---------- Réponses ---------- */
+function recommend(){
+  const c = ctx;
+  let list = games.filter(g =>
+    (c.players==null || (c.players>=g.pmin && c.players<=g.pmax)) &&
+    (!c.maxd || g.duree <= c.maxd + 5) &&
+    (!c.mind || g.duree >= c.mind) &&
+    (!c.maxc || g.cx <= c.maxc) &&
+    (!c.minc || g.cx >= c.minc));
+  let relaxed = false;
+  if(c.tags.size){
+    const withTag = list.filter(g => g.tags.some(t => c.tags.has(t)));
+    if(withTag.length) list = withTag; else relaxed = true;
+  }
+  if(!list.length){
+    lastList = []; 
+    return say(`<div class="crit">${esc(critText(c))}</div>Je ne trouve rien qui coche toutes ces cases. Essaie d'assouplir un critère (durée, difficulté ou type de jeu).` + chips(["Reset","Surprise-moi"]));
+  }
+  const score = g => g.tags.filter(t => c.tags.has(t)).length*3 + (c.players===2 && g.tags.includes("duel") ? 2 : 0);
+  list = list.map((g,i)=>({g,i,s:score(g)})).sort((a,b)=>b.s-a.s || a.i-b.i).map(x=>x.g);
+  lastList = list; offset = 0;
+  showPage(relaxed);
+}
+function showPage(relaxed){
+  const page = lastList.slice(offset, offset+3);
+  if(!page.length){ offset = 0; return showPage(); }
+  lastGame = page[0];
+  let html = `<div class="crit">Critères : ${esc(critText(ctx)) || "aucun"}</div>`;
+  if(relaxed) html += "Rien ne correspond exactement au type demandé, voici ce qui s'en rapproche le plus :";
+  else html += page.length + " idée" + (page.length>1?"s":"") + " pour toi :";
+  html += page.map(g => card(g)).join("");
+  const rest = lastList.length - offset - 3;
+  html += chips([...(rest>0 ? ["Un autre"] : []), "Reset"]);
+  say(html);
+}
+function rules(g){
+  lastGame = g;
+  say(`<strong>${esc(g.nom)}</strong> — règles en bref<br>${esc(g.regles)}
+    <div class="meta" style="color:var(--muted);font-size:13px;margin-top:6px">${players(g)} joueurs · ~${g.duree} min · ${g.age}+</div>` +
+    chips(["Un autre jeu","Surprise-moi"]));
+}
+
+function reply(raw){
+  const t = norm(raw);
+  if(!t) return;
+  if(/^(reset|reinit|on recommence|nouvelle recherche|efface)/.test(t)){
+    ctx = fresh(); lastList = []; return say("C'est reparti de zéro ! Pour combien de joueurs, et quelle ambiance ?" + chips(["Pour 4 joueurs","Jeu coopératif","Jeu pour 2","Soirée entre amis"]));
+  }
+  if(/^(salut|bonjour|coucou|hello|hey|bonsoir|yo)\b/.test(t))
+    return say("Salut ! Je peux te conseiller un jeu ou t'expliquer les règles d'un classique. Qu'est-ce qui te ferait plaisir ?" + chips(["Pour 4 joueurs","Jeu coopératif","Règles de Catan","Surprise-moi"]));
+  if(/\b(merci|super|genial|top|parfait)\b/.test(t) && t.split(" ").length<5)
+    return say("Avec plaisir ! Bonne partie 🎲");
+  if(/\b(aide|help|que sais tu|que peux tu|tu sais faire)\b/.test(t))
+    return say("Je sais :<br>• recommander un jeu (nombre de joueurs, durée, difficulté, type)<br>• expliquer les règles de ~34 jeux (« règles de Azul »)<br>• te proposer une surprise<br>Les critères s'accumulent, « reset » remet tout à zéro." + chips(["Pour 4 joueurs","Surprise-moi"]));
+
+  // 1. un jeu est cité
+  const named = findGames(t);
+  if(named.length){
+    if(/\b(regle|regles|jouer|explique|expliquer|fonctionne|comment)\b/.test(t) && named.length===1) return rules(named[0]);
+    lastGame = named[0];
+    return say(named.map(g => card(g)).join(""));
+  }
+  // 2. suite d'une liste
+  if(/\b(autre|autres|encore|suivant|suivants|d autres|plus)\b/.test(t) && lastList.length && !hasCriteria(parseCriteria(t))){
+    offset += 3; return showPage();
+  }
+  // 3. surprise
+  if(/\b(hasard|surprise|surprends|aleatoire|au pif|n importe quoi|un jeu)\b/.test(t) && !hasCriteria(parseCriteria(t))){
+    const g = games[Math.floor(Math.random()*games.length)];
+    lastGame = g;
+    return say("Que dirais-tu de celui-ci ?" + card(g) + chips(["Surprise-moi","Reset"]));
+  }
+  // 4. règles du dernier jeu évoqué
+  if(/\b(regle|regles|comment on joue|explique)\b/.test(t) && lastGame) return rules(lastGame);
+  // 5. critères
+  const c = parseCriteria(t);
+  if(hasCriteria(c)){ merge(c); return recommend(); }
+  // 6. fallback
+  say("Je n'ai pas bien compris 🤔. Dis-moi par exemple le nombre de joueurs, la durée ou le type de jeu, ou nomme un jeu pour en voir la fiche." +
+      chips(["Pour 4 joueurs","Jeu coopératif rapide","Règles de Carcassonne","Surprise-moi"]));
+}
+
+/* ---------- Événements ---------- */
+function send(text){
+  text = text.trim(); if(!text) return;
+  add("user", text, true);
+  reply(text);
+}
+document.getElementById("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const i = document.getElementById("input");
+  const v = i.value; i.value = ""; send(v);
+});
+chat.addEventListener("click", e => {
+  const b = e.target.closest("button.q");
+  if(b) send(b.dataset.q);
+});
+
+say("Salut, je suis <strong>BoardBot</strong> 🎲<br>Dis-moi pour combien de joueurs, combien de temps et quel genre de jeu tu cherches, ou demande-moi les règles d'un jeu." +
+    chips(["Pour 4 joueurs","Jeu coopératif","Jeu pour 2","Règles de Catan","Surprise-moi"]));
+</script>
+</body>
+</html>
