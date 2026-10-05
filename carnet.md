@@ -120,11 +120,7 @@ Trois conversations neuves, sans correction. Les réponses viennent de Claude (p
 
 ### J1-05 · 🛠 dsh en main — [fiche](checkpoints/J1-05-dsh-en-main.md)
 
-- [ ] Validé
-- Preuve (`dsh --version`, mode Read Only, modèle `capweb-ia`, `git status -- atelier` propre ; **jamais la clé**) :
-- La consigne exacte envoyée à l'agent et sa réponse :
-- Pour chaque fichier cité : existe ou non, description juste ou fausse, pourquoi ; et un fichier qu'il n'a pas cité :
-- Difficulté qui reste :
+- Preuve : `dsh --version` → `0.1.5-rc.2` ; session ouverte sur le dossier `atelier`, mode Read Only, modèle `capweb-ia` ; `git status -- atelier` → `nothing to commit, working tree clean` avant et après. Test de la barrière : au premier essai, j'ai cliqué « Allow » par erreur et l'agent a créé `public/essai-dsh.txt` ; je l'ai supprimé à la main, puis refait le test en cliquant « Reject » sur la demande `escalate sandbox to workspace-write: Création du fichier public/essai-dsh.txt demandé par l'utilisateur.` ; `git status -- atelier` est resté propre. La clé n'est que dans `~/dsh-capweb/.credentials.yaml` (jamais ici).
 
 ### J1-06 · 🧱 Anatomie d'un prompt — [fiche](checkpoints/J1-06-anatomie-dun-prompt.md)
 
