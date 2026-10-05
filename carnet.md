@@ -120,7 +120,37 @@ Trois conversations neuves, sans correction. Les réponses viennent de Claude (p
 
 ### J1-05 · 🛠 dsh en main — [fiche](checkpoints/J1-05-dsh-en-main.md)
 
+- [x] Validé
 - Preuve : `dsh --version` → `0.1.5-rc.2` ; session ouverte sur le dossier `atelier`, mode Read Only, modèle `capweb-ia` ; `git status -- atelier` → `nothing to commit, working tree clean` avant et après. Test de la barrière : au premier essai, j'ai cliqué « Allow » par erreur et l'agent a créé `public/essai-dsh.txt` ; je l'ai supprimé à la main, puis refait le test en cliquant « Reject » sur la demande `escalate sandbox to workspace-write: Création du fichier public/essai-dsh.txt demandé par l'utilisateur.` ; `git status -- atelier` est resté propre. La clé n'est que dans `~/dsh-capweb/.credentials.yaml` (jamais ici).
+- La consigne exacte envoyée à l'agent et sa réponse :
+
+  Consigne :
+```text
+  Liste les fichiers de ce dossier et dis ce que fait chacun. Donne le chemin de chaque fichier. Si tu ne sais pas ce que fait un fichier, écris « je ne sais pas ». N'écris rien et ne modifie rien.
+```
+  Réponse : l'agent liste 13 fichiers avec leur chemin complet (`package.json`, `package-lock.json`, `README.md`, `server/app.js`, `server/start.js`, `public/index.html`, `public/styles.css`, `public/js/app.js`, `tests/server.test.js`, `browser/depart.spec.js`, `playwright.config.js`, `eslint.config.js`, `.gitignore`) et décrit chacun en une ligne. Il écrit « 12 fichiers » dans sa première phrase alors qu'il en liste 13. Il n'a répondu « je ne sais pas » pour aucun fichier.
+
+- Pour chaque fichier cité : existe ou non, description juste ou fausse, pourquoi ; et un fichier qu'il n'a pas cité :
+
+  | Fichier | Existe ? | Description | Pourquoi |
+  |---|---|---|---|
+  | `package.json` | oui | juste mais incomplète | il oublie `@axe-core/playwright` dans les devDependencies et `"type": "module"` |
+  | `package-lock.json` | oui | juste | fichier généré par npm, fige les versions |
+  | `README.md` | oui | juste | démarrer sur `http://127.0.0.1:3000`, lancer `npm test`, renvoi vers J1-01 et le carnet |
+  | `server/app.js` | oui | juste | liste blanche de 4 chemins, `/version.json`, GET/HEAD seulement (405 sinon), 404 neutre |
+  | `server/start.js` | oui | juste | port validé (défaut 3000), écoute sur `127.0.0.1`, arrêt sur SIGINT/SIGTERM |
+  | `public/index.html` | oui | juste | `h1` « Cap Web », zone `#status`, liens CSS et JS |
+  | `public/styles.css` | oui | juste | 2 règles : police, marges, largeur max centrée |
+  | `public/js/app.js` | oui | juste | écrit « Votre point de départ est prêt. » dans `#status` |
+  | `tests/server.test.js` | oui | juste | 9 tests (comptés dans le fichier) |
+  | `browser/depart.spec.js` | oui | juste | test Playwright : `h1` visible, `status` présent, aucune erreur JS |
+  | `playwright.config.js` | oui | juste | Chromium headless, port 4173, démarre `node server/start.js` |
+  | `eslint.config.js` | oui | juste mais incomplète | il oublie la règle `no-undef` |
+  | `.gitignore` | oui | juste | ignore `node_modules/`, `dist/`, `preuves/`, `test-results/`, `playwright-report/`, `coverage/` |
+
+  Fichier non cité : aucun parmi les fichiers ; seul le dossier `node_modules/` (s'il est présent) n'est pas mentionné.
+
+- Difficulté qui reste : l'agent s'est trompé de compte (12 au lieu de 13) tout en étant exact sur le fond : il faut donc vérifier même ses affirmations les plus plausibles. Pas de blocage technique.
 
 ### J1-06 · 🧱 Anatomie d'un prompt — [fiche](checkpoints/J1-06-anatomie-dun-prompt.md)
 
